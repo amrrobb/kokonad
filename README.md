@@ -116,8 +116,8 @@ docs/          PRD, architecture, wireframes, mockups
 
 | Contract | Address |
 |---|---|
-| KokoToken | [`0x79e30C27301c72f236ce69FebB4aD041b7C88e3d`](https://testnet.monadexplorer.com/address/0x79e30C27301c72f236ce69FebB4aD041b7C88e3d) |
-| RoomFactory | [`0x7F60413c027824Ee89119A921b5972328519B005`](https://testnet.monadexplorer.com/address/0x7F60413c027824Ee89119A921b5972328519B005) |
+| KokoToken | [`0x79e30C27301c72f236ce69FebB4aD041b7C88e3d`](https://testnet.monadvision.com/address/0x79e30C27301c72f236ce69FebB4aD041b7C88e3d) |
+| RoomFactory | [`0x7F60413c027824Ee89119A921b5972328519B005`](https://testnet.monadvision.com/address/0x7F60413c027824Ee89119A921b5972328519B005) |
 | HostRegistry | `0x…` |
 
 Rooms are deployed per session by `RoomFactory`; each address is shown on the host screen and in the indexer.
