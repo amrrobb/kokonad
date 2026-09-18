@@ -11,3 +11,6 @@ contracts/broadcast/**/dry-run/
 generated/
 .DS_Store
 *.log
+
+# local-only hackathon credentials and resources
+resources/
