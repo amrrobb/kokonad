@@ -136,7 +136,7 @@ implementation deliberately differs from the PRD function table.
 ### Backend status (week 1)
 
 `backend/` holds the gas drip: 0.1 MON once per address for a known room code, top-up below 0.02 MON
-before each question, limits per address, per room and per day. 52 unit tests and 5 integration tests
+before each question, limits per address, per room and per day. 53 unit tests and 6 integration tests
 on a local anvil node with the real contracts, where a zero-balance account is dripped and then joins
 a room on its own gas. It will not start until the contracts are deployed to 10143. See
 [`backend/README.md`](backend/README.md).
