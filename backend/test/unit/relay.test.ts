@@ -14,7 +14,7 @@ const ROOM = getAddress("0x00000000000000000000000000000000000000f1");
 const STRANGER = getAddress("0x00000000000000000000000000000000000000ee");
 const SIG = `0x${"ab".repeat(65)}` as Hex;
 
-const limits = { dailyCapWei: parseEther("5"), maxRequestGas: 8_000_000n, signerRequestsPerMinute: 30 };
+const limits = { dailyCapWei: parseEther("5"), maxRequestGas: 8_000_000n, signerRequestsPerMinute: 30, tokenCallsPerSignerPerHour: 4, tokenCallsPerHour: 30 };
 let chain: FakeChain;
 let ledgerPath: string;
 let now: number;
@@ -98,6 +98,21 @@ describe("relay", () => {
     expect(await s.relay(req())).toEqual({ status: "refused", reason: "daily_cap" });
     now += 24 * 60 * 60 * 1000 + 1;
     expect((await s.relay(req())).status).toBe("relayed");
+  });
+
+  it("limits relayed token calls (open mint) far tighter than room calls", async () => {
+    const s = service({ tokenCallsPerSignerPerHour: 2, tokenCallsPerHour: 3 });
+    await s.relay(req({ to: chain.token }));
+    await s.relay(req({ to: chain.token }));
+    expect(await s.relay(req({ to: chain.token }))).toEqual({ status: "refused", reason: "rate_limited", detail: "token calls" });
+    // Room calls from the same signer are unaffected.
+    expect((await s.relay(req())).status).toBe("relayed");
+    // The global limit stops many throwaway signers too.
+    expect((await s.relay(req({ from: BOB, to: chain.token }))).status).toBe("relayed");
+    const CAROL = getAddress("0x3333333333333333333333333333333333333333");
+    expect(await s.relay(req({ from: CAROL, to: chain.token }))).toEqual({ status: "refused", reason: "rate_limited", detail: "token calls" });
+    now += 60 * 60 * 1000 + 1;
+    expect((await s.relay(req({ from: CAROL, to: chain.token }))).status).toBe("relayed");
   });
 });
 

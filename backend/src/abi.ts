@@ -25,7 +25,7 @@ export const roomAbi = parseAbi([
     "NotHost", "NotResolver", "NotParticipant", "RoomIsClosed", "WrongCode", "HostCannotJoin", "AlreadyJoined",
     "RoomFull", "InsufficientBudget", "ZeroAmount", "PooledOnly", "SponsoredOnly", "TooManyQuestions", "BadQuestion",
     "WrongStatus", "HashMismatch", "NoAnswerToken", "TooLate", "TooEarly", "AlreadyRevealed", "NotAnswerer",
-    "AlreadyDisputed", "QuestionInFlight", "NothingToClaim", "BadOutcome", "DisputeWindowOpen",
+    "AlreadyDisputed", "QuestionInFlight", "NothingToClaim", "BadOutcome", "DisputeWindowOpen", "SessionKeyTaken",
   ].map((e) => `error ${e}()`),
   "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
   "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",

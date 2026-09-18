@@ -21,7 +21,9 @@ the relayer. A player's account only ever signs; it needs no MON at all.
 3. **Signature, nonce and deadline** are checked by the forwarder's own `verify`.
 4. **Dry run.** The call is simulated as the signer. A call that would revert is refused with the
    contract's reason, such as `AlreadyJoined`, before any gas is spent.
-5. **Limits** allow 30 requests per signer per minute and 5 MON of gas per rolling 24 hours.
+5. **Limits** allow 30 requests per signer per minute and 5 MON of gas per rolling 24 hours. Token
+   calls get tighter limits, 4 per signer per hour and 30 per hour overall, because `mint` is open to
+   anyone and would otherwise be a faucet paid in the relayer's gas.
 
 The relayer can delay a request. It cannot forge or alter one, and it never decides money or results.
 

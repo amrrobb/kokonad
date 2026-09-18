@@ -6,6 +6,7 @@ import { SlidingWindowLimiter } from "./rateLimit.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 const MAX_DATA_BYTES = 8 * 1024;
 const MAX_DEADLINE_AHEAD_S = 24 * 60 * 60;
 
@@ -24,7 +25,8 @@ export type RefusalReason =
   | "rate_limited"
   | "daily_cap";
 
-type Limits = Pick<RelayConfig, "dailyCapWei" | "maxRequestGas" | "signerRequestsPerMinute">;
+type Limits = Pick<RelayConfig, "dailyCapWei" | "maxRequestGas" | "signerRequestsPerMinute"> &
+  Partial<Pick<RelayConfig, "tokenCallsPerSignerPerHour" | "tokenCallsPerHour">>;
 
 /**
  * Pays gas for players. It never decides anything about money or results: it only submits requests the
@@ -33,6 +35,12 @@ type Limits = Pick<RelayConfig, "dailyCapWei" | "maxRequestGas" | "signerRequest
  */
 export class RelayService {
   private readonly signerLimiter: SlidingWindowLimiter;
+  /**
+   * KokoToken.mint is open to anyone, so relayed token calls are a free faucet paid in the relayer's gas.
+   * They get their own, much tighter limits so a script cannot burn the day's budget and lock players out.
+   */
+  private readonly tokenSignerLimiter: SlidingWindowLimiter;
+  private readonly tokenGlobalLimiter: SlidingWindowLimiter;
 
   constructor(
     private readonly chain: Chain,
@@ -41,6 +49,8 @@ export class RelayService {
     private readonly now: () => number = Date.now,
   ) {
     this.signerLimiter = new SlidingWindowLimiter(limits.signerRequestsPerMinute, MINUTE_MS, now);
+    this.tokenSignerLimiter = new SlidingWindowLimiter(limits.tokenCallsPerSignerPerHour ?? 4, HOUR_MS, now);
+    this.tokenGlobalLimiter = new SlidingWindowLimiter(limits.tokenCallsPerHour ?? 30, HOUR_MS, now);
   }
 
   /** Parses untrusted JSON into a request, or explains what is wrong with it. */
@@ -79,6 +89,10 @@ export class RelayService {
     const nowS = Math.floor(this.now() / 1000);
     if (req.deadline <= nowS || req.deadline > nowS + MAX_DEADLINE_AHEAD_S) return { status: "refused", reason: "deadline" };
     if (!this.signerLimiter.tryTake(req.from.toLowerCase())) return { status: "refused", reason: "rate_limited" };
+    if (req.to.toLowerCase() === this.chain.token.toLowerCase()) {
+      if (!this.tokenSignerLimiter.tryTake(req.from.toLowerCase())) return { status: "refused", reason: "rate_limited", detail: "token calls" };
+      if (!this.tokenGlobalLimiter.tryTake("all")) return { status: "refused", reason: "rate_limited", detail: "token calls" };
+    }
     if (this.ledger.spentSince(this.now() - DAY_MS) >= this.limits.dailyCapWei) return { status: "refused", reason: "daily_cap" };
 
     // Chain checks. RPC failures throw and surface as 502, never as a verdict on the request.

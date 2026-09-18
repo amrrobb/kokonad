@@ -23,6 +23,9 @@ export interface RelayConfig {
   maxRequestGas: bigint;
   /** Relayed requests per signer per minute. */
   signerRequestsPerMinute: number;
+  /** Relayed KokoToken calls (open mint) per signer per hour, and across all signers per hour. */
+  tokenCallsPerSignerPerHour: number;
+  tokenCallsPerHour: number;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -78,5 +81,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
     dailyCapWei: parseEther(env.DAILY_CAP_MON ?? "5"),
     maxRequestGas: BigInt(env.MAX_REQUEST_GAS ?? "8000000"),
     signerRequestsPerMinute: Number(env.SIGNER_REQUESTS_PER_MINUTE ?? 30),
+    tokenCallsPerSignerPerHour: Number(env.TOKEN_CALLS_PER_SIGNER_PER_HOUR ?? 4),
+    tokenCallsPerHour: Number(env.TOKEN_CALLS_PER_HOUR ?? 30),
   };
 }
