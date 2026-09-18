@@ -2,14 +2,16 @@
   "chainId": 10143,
   "network": "monad-testnet",
   "deployedAt": "2026-09-18",
-  "deployBlock": 63545374,
+  "deployBlock": 63558669,
   "contracts": {
-    "KokoToken": "0x79e30C27301c72f236ce69FebB4aD041b7C88e3d",
-    "RoomFactory": "0x7F60413c027824Ee89119A921b5972328519B005",
+    "Forwarder": "0x0Bd2c46bF04a8CC797cAb5587de4DE68dC41BF93",
+    "KokoToken": "0x2165526fce349F238B546aEdEcbe74a0F941a3a9",
+    "RoomFactory": "0xCA3cC7361ef62D69d9e6a344B492A176DA23BeD4",
     "HostRegistry": "0x0000000000000000000000000000000000000000"
   },
   "transactions": {
-    "KokoToken": "0xed122bdb5530c3e9bc52920330306b43d02886bb1767a7f53c96f822d51a88a7",
-    "RoomFactory": "0x50f04888b6434996ccd0229a4cf8f07cbc650a69ad2ce19e71d49b0f28e36681"
+    "Forwarder": "0xb5ddcb3af95b38c47be2f4d89ab38a5ec02b6e35f1e33c3ecff6eacb2d396e26",
+    "KokoToken": "0xe6cf3b2bd03eadd54e8db6859b4996391c9bbe2fd08546a2a453c80866881c77",
+    "RoomFactory": "0xab9f9e99bb452f19aa2e0a22f450f3445c0059a3dd41eb42f4d7a4dde56c336b"
   }
 }
