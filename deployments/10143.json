@@ -1,0 +1,11 @@
+{
+  "chainId": 10143,
+  "network": "monad-testnet",
+  "deployedAt": null,
+  "deployBlock": null,
+  "contracts": {
+    "KokoToken": "0x0000000000000000000000000000000000000000",
+    "RoomFactory": "0x0000000000000000000000000000000000000000",
+    "HostRegistry": "0x0000000000000000000000000000000000000000"
+  }
+}

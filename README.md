@@ -120,6 +120,17 @@ docs/          PRD, architecture, wireframes, mockups
 | HostRegistry | `0x…` |
 
 Rooms are deployed per session by `RoomFactory`; each address is shown on the host screen and in the indexer.
+Addresses live in [`deployments/10143.json`](deployments/10143.json) (placeholder zeros until the first testnet deploy; `HostRegistry` ships in week 2).
+
+### Contracts status (week 1)
+
+`contracts/` holds `KokoToken`, `RoomFactory` and `Room` with the full question lifecycle: join and
+deposits (sponsored budget or pooled), sealed questions, one play charged per participant into the pot
+with Answer/Correct balances, commit-reveal, resolve, 60-second dispute window, settle (push ≤ 20
+winners, pull above), void with refunds, timeout, leave and close. 51 Foundry tests including
+`Room.e2e.t.sol`, which replays the PRD §5A worked example to the wei. See
+[`contracts/README.md`](contracts/README.md) for the function map and the few places the
+implementation deliberately differs from the PRD function table.
 
 ---
 
