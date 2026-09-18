@@ -8,9 +8,10 @@ import { encodeFunctionData, type Address } from "viem";
 import { roomAbi, tokenAbi } from "@/lib/abi";
 import { contracts } from "@/lib/deployments";
 import { PlainError, send } from "@/lib/relay";
-import { findRoom, readRoom } from "@/lib/room";
+import { findRoom, readLatestQuestion, readRoom } from "@/lib/room";
 import { getAccount } from "@/lib/signer";
 import { Avatar, PrimaryButton, RoomHeader, Screen, coins } from "@/components/ui";
+import { QuestionScreen } from "@/components/question";
 
 type Step = "account" | "coins" | "join";
 const STEPS: Array<[Step, string]> = [
@@ -45,6 +46,17 @@ export default function RoomPage() {
     refetchInterval: 2000,
   });
   const view = viewQ.data;
+  const joined = !!view?.me.joined;
+  const questionQ = useQuery({
+    queryKey: ["question", room, me],
+    queryFn: () => readLatestQuestion(room as Address, me),
+    enabled: !!room && joined,
+    refetchInterval: 2000,
+  });
+  const refresh = () => {
+    void viewQ.refetch();
+    void questionQ.refetch();
+  };
 
   async function join() {
     if (!room || !view) return;
@@ -111,9 +123,21 @@ export default function RoomPage() {
   // Lobby
   if (view.me.joined) {
     const myName = view.people.find((p) => p.address === me)?.name || name;
+    // Balance = coins still in the room (deposit) + coins won and paid out to the account. Both from the chain.
+    const balance = view.me.deposit + view.me.held;
+    if (questionQ.data) {
+      return (
+        <Screen>
+          <RoomHeader code={code} balance={balance} />
+          <div className="mt-6 flex flex-1 flex-col">
+            <QuestionScreen room={room as Address} view={view} q={questionQ.data} onChange={refresh} />
+          </div>
+        </Screen>
+      );
+    }
     return (
       <Screen>
-        <RoomHeader code={code} balance={view.me.deposit} />
+        <RoomHeader code={code} balance={balance} />
         <div className="mt-8 flex flex-col gap-5">
           <div>
             <h1 className="text-[30px] font-black leading-[1.1] tracking-[-.02em]">Hi, {myName}.</h1>

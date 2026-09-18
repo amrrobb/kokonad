@@ -13,5 +13,8 @@
     "Forwarder": "0x3744373e733a7c3445b808755b2132511d2cc86a4eaa6c21c92cc1c6a94411f8",
     "KokoToken": "0x2887a76fbc6d9a4371020ff97941237cddce995070a14feb8a100f84210fe099",
     "RoomFactory": "0x3baff50f1da36e0341f1d05ae9f528f440a77fd55e84099d8ac14357c4182e16"
+  },
+  "infrastructure": {
+    "Multicall3": "0xcA11bde05977b3631167028862bE2a173976CA11"
   }
 }

@@ -8,3 +8,5 @@ export const contracts = deployments.contracts as {
   RoomFactory: Address;
 };
 export const CHAIN_ID = deployments.chainId;
+/** Shared infrastructure on 10143 (not ours), recorded in the same file. */
+export const multicall3 = deployments.infrastructure.Multicall3 as Address;

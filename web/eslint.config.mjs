@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local, gitignored browser-driving scripts.
+    ".e2e/**",
   ]),
 ]);
 
