@@ -5,19 +5,22 @@ import {Test} from "forge-std/Test.sol";
 import {KokoToken} from "../src/KokoToken.sol";
 import {Room} from "../src/Room.sol";
 import {RoomFactory} from "../src/RoomFactory.sol";
+import {ERC2771Forwarder} from "@openzeppelin/contracts/metatx/ERC2771Forwarder.sol";
 
 /// @dev Shared fixtures: token, factory, a host, and helpers that mirror what the clients will do.
 abstract contract RoomTestBase is Test {
     uint256 internal constant COIN = 1e18;
 
+    ERC2771Forwarder internal forwarder;
     KokoToken internal token;
     RoomFactory internal factory;
     address internal host = makeAddr("host");
     string[] internal noOptions;
 
     function setUp() public virtual {
-        token = new KokoToken();
-        factory = new RoomFactory();
+        forwarder = new ERC2771Forwarder("Kokonad");
+        token = new KokoToken(address(forwarder));
+        factory = new RoomFactory(address(forwarder));
     }
 
     function _createRoom(uint128 playPrice, uint128 startingDeposit, bool sponsored, bool hostPlays)

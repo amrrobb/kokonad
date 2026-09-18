@@ -10,7 +10,7 @@ contract KokoTokenTest is Test {
     address internal bob = makeAddr("bob");
 
     function setUp() public {
-        token = new KokoToken();
+        token = new KokoToken(address(0xF0));
     }
 
     function test_metadata() public view {

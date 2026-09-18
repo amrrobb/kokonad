@@ -2,10 +2,11 @@
 pragma solidity ^0.8.24;
 
 import {Room} from "./Room.sol";
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 
 /// @title RoomFactory
 /// @notice Deploys a `Room` per session and hands out a unique 6-character join code.
-contract RoomFactory {
+contract RoomFactory is ERC2771Context {
     /// @dev 32 unambiguous characters (no 0/O, 1/I): 32^6 ≈ 1.07 billion codes.
     bytes internal constant ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     uint256 internal constant CODE_LENGTH = 6;
@@ -15,6 +16,9 @@ contract RoomFactory {
     mapping(bytes32 => address) internal _roomByCode; // keccak256(code) → room
     mapping(address => address[]) internal _roomsByHost;
     uint256 internal _nonce;
+
+    /// @param forwarder Trusted ERC-2771 forwarder, also handed to every Room this factory deploys.
+    constructor(address forwarder) ERC2771Context(forwarder) {}
 
     event RoomCreated(
         address indexed room,
@@ -33,12 +37,12 @@ contract RoomFactory {
     /// @notice Create a room hosted by the caller. Returns the room address and its join code.
     function createRoom(Room.Config calldata cfg) external returns (address room, string memory code) {
         code = _newCode();
-        room = address(new Room(msg.sender, code, cfg));
+        room = address(new Room(_msgSender(), code, cfg, trustedForwarder()));
         _rooms.push(room);
         _roomByCode[keccak256(bytes(code))] = room;
-        _roomsByHost[msg.sender].push(room);
+        _roomsByHost[_msgSender()].push(room);
         emit RoomCreated(
-            room, msg.sender, code, cfg.token, cfg.playPrice, cfg.startingDeposit, cfg.sponsored, cfg.hostPlays
+            room, _msgSender(), code, cfg.token, cfg.playPrice, cfg.startingDeposit, cfg.sponsored, cfg.hostPlays
         );
     }
 
@@ -61,7 +65,7 @@ contract RoomFactory {
 
     function _newCode() internal returns (string memory) {
         for (uint256 t = 0; t < MAX_TRIES; t++) {
-            bytes32 h = keccak256(abi.encode(block.prevrandao, block.timestamp, msg.sender, _nonce++, t));
+            bytes32 h = keccak256(abi.encode(block.prevrandao, block.timestamp, _msgSender(), _nonce++, t));
             bytes memory c = new bytes(CODE_LENGTH);
             for (uint256 i = 0; i < CODE_LENGTH; i++) {
                 c[i] = ALPHABET[uint8(h[i]) % ALPHABET.length];

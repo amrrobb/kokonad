@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 
 /// @title Room
 /// @notice One live guessing session. Holds participants' deposits, per-question Answer/Correct balances,
@@ -14,7 +15,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 ///      window. Rounding dust rolls into the next pot and goes to the host at close.
 ///      The chain is the only source of truth for money, ordering and results. No function lets anyone
 ///      withdraw funds that are not theirs.
-contract Room is ReentrancyGuard {
+contract Room is ReentrancyGuard, ERC2771Context {
     using SafeERC20 for IERC20;
 
     // ---------------------------------------------------------------------------------------------
@@ -214,9 +215,11 @@ contract Room is ReentrancyGuard {
     // Construction
     // ---------------------------------------------------------------------------------------------
 
-    constructor(address host_, string memory code_, Config memory cfg) {
+    /// @param forwarder Trusted ERC-2771 forwarder: participants sign requests and a relayer pays the gas,
+    ///        so a fresh account with no MON can still play. The forwarder only relays signed requests.
+    constructor(address host_, string memory code_, Config memory cfg, address forwarder) ERC2771Context(forwarder) {
         if (cfg.token == address(0) || host_ == address(0) || cfg.startingDeposit == 0) revert BadQuestion();
-        factory = msg.sender;
+        factory = msg.sender; // the deploying factory itself, never relayed
         host = host_;
         code = code_;
         token = IERC20(cfg.token);
@@ -227,7 +230,7 @@ contract Room is ReentrancyGuard {
     }
 
     modifier onlyHost() {
-        if (msg.sender != host) revert NotHost();
+        if (_msgSender() != host) revert NotHost();
         _;
     }
 
@@ -244,56 +247,56 @@ contract Room is ReentrancyGuard {
     ///         pull it from the participant (needs a prior ERC-20 approval).
     function join(string calldata code_, string calldata displayName) external open nonReentrant {
         if (keccak256(bytes(code_)) != keccak256(bytes(code))) revert WrongCode();
-        if (msg.sender == host && !hostPlays) revert HostCannotJoin();
-        if (joined[msg.sender]) revert AlreadyJoined();
+        if (_msgSender() == host && !hostPlays) revert HostCannotJoin();
+        if (joined[_msgSender()]) revert AlreadyJoined();
         if (_participantList.length >= MAX_PARTICIPANTS) revert RoomFull();
 
         if (sponsored) {
             if (budget < startingDeposit) revert InsufficientBudget();
             budget -= startingDeposit;
         } else {
-            token.safeTransferFrom(msg.sender, address(this), startingDeposit);
+            token.safeTransferFrom(_msgSender(), address(this), startingDeposit);
         }
 
-        joined[msg.sender] = true;
-        _participantList.push(msg.sender);
-        participants[msg.sender].deposit = startingDeposit;
-        displayNames[msg.sender] = displayName;
+        joined[_msgSender()] = true;
+        _participantList.push(_msgSender());
+        participants[_msgSender()].deposit = startingDeposit;
+        displayNames[_msgSender()] = displayName;
 
-        emit Joined(msg.sender, displayName, startingDeposit);
-        emit Deposited(msg.sender, startingDeposit, sponsored);
+        emit Joined(_msgSender(), displayName, startingDeposit);
+        emit Deposited(_msgSender(), startingDeposit, sponsored);
     }
 
     /// @notice Leave for good: remaining deposit is refunded, re-joining this room is impossible.
     ///         An Answer for the currently open question is forfeited (its play stays in the pot).
     function leave() external nonReentrant {
-        Participant storage p = participants[msg.sender];
-        if (!joined[msg.sender] || p.left) revert NotParticipant();
+        Participant storage p = participants[_msgSender()];
+        if (!joined[_msgSender()] || p.left) revert NotParticipant();
         uint128 refund = p.deposit;
         p.deposit = 0;
         p.left = true;
-        if (refund > 0) token.safeTransfer(msg.sender, refund);
-        emit Left(msg.sender, refund);
+        if (refund > 0) token.safeTransfer(_msgSender(), refund);
+        emit Left(_msgSender(), refund);
     }
 
     /// @notice Pooled rooms: add to your own deposit.
     function topUp(uint128 amount) external open nonReentrant {
         if (sponsored) revert PooledOnly();
         if (amount == 0) revert ZeroAmount();
-        Participant storage p = participants[msg.sender];
-        if (!joined[msg.sender] || p.left) revert NotParticipant();
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        Participant storage p = participants[_msgSender()];
+        if (!joined[_msgSender()] || p.left) revert NotParticipant();
+        token.safeTransferFrom(_msgSender(), address(this), amount);
         p.deposit += amount;
-        emit Deposited(msg.sender, amount, false);
+        emit Deposited(_msgSender(), amount, false);
     }
 
     /// @notice Sponsored rooms: host adds to the budget that `join` and `credit` draw from.
     function fundBudget(uint128 amount) external open onlyHost nonReentrant {
         if (!sponsored) revert SponsoredOnly();
         if (amount == 0) revert ZeroAmount();
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(_msgSender(), address(this), amount);
         budget += amount;
-        emit BudgetFunded(msg.sender, amount);
+        emit BudgetFunded(_msgSender(), amount);
     }
 
     /// @notice Sponsored rooms: host moves budget into one participant's deposit (e.g. they ran out of plays).
@@ -310,12 +313,12 @@ contract Room is ReentrancyGuard {
 
     /// @notice Fallback for delegated signing: let `key` act as you for commit / reveal / dispute / claim.
     function registerSessionKey(address key, uint64 expiry) external {
-        Participant storage p = participants[msg.sender];
-        if (!joined[msg.sender] || p.left) revert NotParticipant();
+        Participant storage p = participants[_msgSender()];
+        if (!joined[_msgSender()] || p.left) revert NotParticipant();
         if (key == address(0) || joined[key]) revert BadQuestion();
-        sessionKeyOwner[key] = msg.sender;
+        sessionKeyOwner[key] = _msgSender();
         sessionKeyExpiry[key] = expiry;
-        emit SessionKeyRegistered(msg.sender, key, expiry);
+        emit SessionKeyRegistered(_msgSender(), key, expiry);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -361,7 +364,7 @@ contract Room is ReentrancyGuard {
 
         _finalizeActive();
 
-        if (seed > 0) token.safeTransferFrom(msg.sender, address(this), seed);
+        if (seed > 0) token.safeTransferFrom(_msgSender(), address(this), seed);
 
         q.text = text;
         for (uint256 i = 0; i < options.length; i++) {
@@ -390,7 +393,7 @@ contract Room is ReentrancyGuard {
     /// @dev Callable once the reveal window closed, or earlier once every answerer has revealed.
     function resolve(uint256 id, bytes32 outcome) external open nonReentrant {
         Question storage q = _questions[id];
-        if (msg.sender != q.resolver) revert NotResolver();
+        if (_msgSender() != q.resolver) revert NotResolver();
         _advance(id);
         if (q.status != Status.REVEAL) revert WrongStatus();
         if (block.timestamp <= q.revealUntil && q.revealed < q.answerers) revert TooEarly();
@@ -629,10 +632,13 @@ contract Room is ReentrancyGuard {
     // Internals
     // ---------------------------------------------------------------------------------------------
 
+    /// @dev Effective participant: the signer (direct caller, or the signer of a relayed request), mapped to
+    ///      its owner when the signer is a registered, unexpired session key.
     function _actor() internal view returns (address) {
-        address owner = sessionKeyOwner[msg.sender];
-        if (owner != address(0) && sessionKeyExpiry[msg.sender] >= block.timestamp) return owner;
-        return msg.sender;
+        address sender = _msgSender();
+        address owner = sessionKeyOwner[sender];
+        if (owner != address(0) && sessionKeyExpiry[sender] >= block.timestamp) return owner;
+        return sender;
     }
 
     /// @dev Charge one play from every participant with enough deposit, mint Answer_i, fund the pot
