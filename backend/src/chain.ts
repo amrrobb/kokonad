@@ -3,30 +3,48 @@ import {
   ContractFunctionRevertedError,
   createPublicClient,
   createWalletClient,
+  decodeErrorResult,
   defineChain,
   http,
+  maxUint256,
   type Address,
   type Hex,
   type PublicClient,
   type WalletClient,
 } from "viem";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
-import { roomAbi, roomFactoryAbi } from "./abi.js";
+import { forwarderAbi, roomAbi, roomFactoryAbi } from "./abi.js";
 
-/** Everything the drip needs from the chain. Injected so the service can be unit-tested without one. */
+/** A signed ERC-2771 request, as the forwarder takes it. */
+export interface ForwardRequest {
+  from: Address;
+  to: Address;
+  value: bigint;
+  gas: bigint;
+  deadline: number;
+  data: Hex;
+  signature: Hex;
+}
+
+export type Simulation = { ok: true } | { ok: false; reason: string };
+
+/** Everything the relay needs from the chain. Injected so the service can be unit-tested without one. */
 export interface Chain {
   readonly operator: Address;
-  getBalance(address: Address): Promise<bigint>;
-  /** Room address for a join code, or null when the factory says the code does not exist. RPC failures throw. */
-  resolveRoom(code: string): Promise<Address | null>;
-  /** Participants still in the room. The contract never removes leavers from its list, so this filters them. */
-  getActiveParticipants(room: Address): Promise<Address[]>;
-  /** Sends native value and resolves once the transfer is mined successfully. */
-  sendValue(to: Address, wei: bigint): Promise<Hex>;
+  readonly token: Address;
+  readonly factory: Address;
+  /** True only when the factory's own registry maps this room's code back to this exact address. */
+  isFactoryRoom(address: Address): Promise<boolean>;
+  /** Forwarder-level check: signature, nonce and deadline. */
+  verify(req: ForwardRequest): Promise<boolean>;
+  /** Runs the inner call as the signer (balance overridden, since a fresh player holds none). */
+  simulate(req: ForwardRequest): Promise<Simulation>;
+  /** Submits forwarder.execute and resolves once mined successfully, with the gas actually charged. */
+  execute(req: ForwardRequest): Promise<{ txHash: Hex; costWei: bigint }>;
 }
 
 /**
- * Serializes sends so concurrent drips never race for a nonce. The next nonce is
+ * Serializes sends so concurrent relays never race for a nonce. The next nonce is
  * max(fetched pending count, last used + 1): on a load-balanced RPC a node that has not yet
  * seen our previous transaction would otherwise hand back a nonce we already used.
  */
@@ -50,14 +68,42 @@ export class NonceQueue {
   }
 }
 
+/** Best-effort name for a revert, from Room/ERC-20/forwarder errors. */
+export function revertReason(err: unknown): string {
+  if (err instanceof BaseError) {
+    const revert = err.walk((e) => e instanceof ContractFunctionRevertedError);
+    if (revert instanceof ContractFunctionRevertedError && revert.data?.errorName) return revert.data.errorName;
+    const raw = (err.walk((e) => typeof (e as { data?: unknown }).data === "string") as { data?: Hex } | null)?.data;
+    if (raw) {
+      for (const abi of [roomAbi, forwarderAbi, roomFactoryAbi]) {
+        try {
+          return decodeErrorResult({ abi, data: raw }).errorName;
+        } catch {
+          /* try next */
+        }
+      }
+    }
+    return err.shortMessage;
+  }
+  return String(err);
+}
+
 export class ViemChain implements Chain {
   readonly operator: Address;
+  readonly token: Address;
+  readonly factory: Address;
+  private readonly forwarder: Address;
   private readonly account: PrivateKeyAccount;
   private readonly pub: PublicClient;
   private readonly wallet: WalletClient;
   private readonly queue: NonceQueue;
 
-  constructor(opts: { rpcUrl: string; chainId: number; operatorKey: Hex; factory: Address }) {
+  constructor(opts: {
+    rpcUrl: string;
+    chainId: number;
+    operatorKey: Hex;
+    contracts: { RoomFactory: Address; KokoToken: Address; Forwarder: Address };
+  }) {
     const chain = defineChain({
       id: opts.chainId,
       name: `chain-${opts.chainId}`,
@@ -66,56 +112,77 @@ export class ViemChain implements Chain {
     });
     this.account = privateKeyToAccount(opts.operatorKey);
     this.operator = this.account.address;
+    this.token = opts.contracts.KokoToken;
+    this.factory = opts.contracts.RoomFactory;
+    this.forwarder = opts.contracts.Forwarder;
     this.pub = createPublicClient({ chain, transport: http(opts.rpcUrl) });
     this.wallet = createWalletClient({ chain, account: this.account, transport: http(opts.rpcUrl) });
-    this.factory = opts.factory;
-    this.queue = new NonceQueue(() =>
-      this.pub.getTransactionCount({ address: this.operator, blockTag: "pending" }),
-    );
+    this.queue = new NonceQueue(() => this.pub.getTransactionCount({ address: this.operator, blockTag: "pending" }));
   }
-
-  private readonly factory: Address;
 
   getChainId(): Promise<number> {
     return this.pub.getChainId();
   }
 
-  getBalance(address: Address): Promise<bigint> {
-    return this.pub.getBalance({ address });
+  getOperatorBalance(): Promise<bigint> {
+    return this.pub.getBalance({ address: this.operator });
   }
 
-  async resolveRoom(code: string): Promise<Address | null> {
+  async isFactoryRoom(address: Address): Promise<boolean> {
+    let code: string;
     try {
-      return await this.pub.readContract({
-        address: this.factory,
-        abi: roomFactoryAbi,
-        functionName: "roomByCode",
-        args: [code],
-      });
+      code = await this.pub.readContract({ address, abi: roomAbi, functionName: "code" });
     } catch (err) {
-      // Only the contract's own "no such code" answer means absent. Anything else is a failed read.
-      if (err instanceof BaseError) {
-        const revert = err.walk((e) => e instanceof ContractFunctionRevertedError);
-        if (revert instanceof ContractFunctionRevertedError && revert.data?.errorName === "UnknownCode") return null;
-      }
+      // Not a contract with a code() getter: definitely not one of ours. RPC failures still throw.
+      if (err instanceof BaseError && err.walk((e) => e instanceof ContractFunctionRevertedError)) return false;
+      if (err instanceof BaseError && /returned no data|reverted/i.test(err.shortMessage)) return false;
+      throw err;
+    }
+    try {
+      const room = await this.pub.readContract({ address: this.factory, abi: roomFactoryAbi, functionName: "roomByCode", args: [code] });
+      return room.toLowerCase() === address.toLowerCase();
+    } catch (err) {
+      if (revertReason(err) === "UnknownCode") return false;
       throw err;
     }
   }
 
-  async getActiveParticipants(room: Address): Promise<Address[]> {
-    const all = await this.pub.readContract({ address: room, abi: roomAbi, functionName: "getParticipants" });
-    const left = await Promise.all(
-      all.map(async (p) => (await this.pub.readContract({ address: room, abi: roomAbi, functionName: "participants", args: [p] }))[1]),
-    );
-    return all.filter((_, i) => !left[i]);
+  verify(req: ForwardRequest): Promise<boolean> {
+    return this.pub.readContract({ address: this.forwarder, abi: forwarderAbi, functionName: "verify", args: [toTuple(req)] });
   }
 
-  async sendValue(to: Address, wei: bigint): Promise<Hex> {
+  async simulate(req: ForwardRequest): Promise<Simulation> {
+    try {
+      // Called directly as the signer: the target sees msg.sender == signer, same as a relayed call.
+      await this.pub.call({
+        account: req.from,
+        to: req.to,
+        data: req.data,
+        gas: req.gas,
+        stateOverride: [{ address: req.from, balance: maxUint256 / 2n }],
+      });
+      return { ok: true };
+    } catch (err) {
+      const reason = revertReason(err);
+      if (err instanceof BaseError && /revert/i.test(err.message)) return { ok: false, reason };
+      throw err; // RPC failure: not a verdict on the request
+    }
+  }
+
+  async execute(req: ForwardRequest): Promise<{ txHash: Hex; costWei: bigint }> {
+    const args = [toTuple(req)] as const;
+    const estimate = await this.pub.estimateContractGas({ account: this.account, address: this.forwarder, abi: forwarderAbi, functionName: "execute", args });
+    // Monad charges the full gas limit, so keep the buffer small.
+    const gas = (estimate * 110n) / 100n;
     const hash = await this.queue.run((nonce) =>
-      this.wallet.sendTransaction({ account: this.account, chain: this.wallet.chain, to, value: wei, nonce }),
+      this.wallet.writeContract({ account: this.account, chain: this.wallet.chain, address: this.forwarder, abi: forwarderAbi, functionName: "execute", args, gas, nonce }),
     );
     const receipt = await this.pub.waitForTransactionReceipt({ hash });
-    if (receipt.status !== "success") throw new Error(`transfer ${hash} reverted`);
-    return hash;
+    if (receipt.status !== "success") throw new Error(`relay ${hash} reverted`);
+    return { txHash: hash, costWei: gas * receipt.effectiveGasPrice };
   }
+}
+
+function toTuple(req: ForwardRequest) {
+  return { from: req.from, to: req.to, value: req.value, gas: req.gas, deadline: req.deadline, data: req.data, signature: req.signature };
 }

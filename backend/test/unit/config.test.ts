@@ -19,13 +19,19 @@ describe("deployments", () => {
     expect(d.chainId).toBe(10143);
   });
 
-  it("refuses to start while the repo file still holds placeholder addresses", () => {
-    expect(isPlaceholder(loadDeployments(DEFAULT_DEPLOYMENTS_PATH))).toBe(true);
-    expect(() => loadConfig({ RPC_URL: "http://x", DRIP_OPERATOR_PRIVATE_KEY: KEY })).toThrow(/placeholder/);
+  it("treats any zero address as a placeholder and refuses to start on it", () => {
+    const path = writeDeployments({ chainId: 10143, contracts: { RoomFactory: FACTORY, KokoToken: FACTORY, Forwarder: "0x0000000000000000000000000000000000000000" } });
+    expect(isPlaceholder(loadDeployments(path))).toBe(true);
+    expect(() => loadConfig({ RPC_URL: "http://x", RELAYER_PRIVATE_KEY: KEY, DEPLOYMENTS_PATH: path })).toThrow(/placeholder/);
+  });
+
+  it("requires a Forwarder address", () => {
+    const path = writeDeployments({ chainId: 10143, contracts: { RoomFactory: FACTORY, KokoToken: FACTORY } });
+    expect(() => loadDeployments(path)).toThrow(/Forwarder/);
   });
 
   it("refuses a mainnet deployments file", () => {
-    const path = writeDeployments({ chainId: 143, contracts: { RoomFactory: FACTORY, KokoToken: FACTORY } });
+    const path = writeDeployments({ chainId: 143, contracts: { RoomFactory: FACTORY, KokoToken: FACTORY, Forwarder: FACTORY } });
     expect(() => loadDeployments(path)).toThrow(/testnet only/);
   });
 
@@ -36,17 +42,17 @@ describe("deployments", () => {
 });
 
 describe("loadConfig", () => {
-  const deployed = () => writeDeployments({ chainId: 10143, contracts: { RoomFactory: FACTORY, KokoToken: FACTORY } });
+  const deployed = () => writeDeployments({ chainId: 10143, contracts: { RoomFactory: FACTORY, KokoToken: FACTORY, Forwarder: FACTORY } });
 
   it("loads defaults from a deployed file", () => {
-    const c = loadConfig({ RPC_URL: "http://x", DRIP_OPERATOR_PRIVATE_KEY: KEY, DEPLOYMENTS_PATH: deployed() });
-    expect(c.dripWei).toBe(100000000000000000n);
-    expect(c.topUpThresholdWei).toBe(20000000000000000n);
+    const c = loadConfig({ RPC_URL: "http://x", RELAYER_PRIVATE_KEY: KEY, DEPLOYMENTS_PATH: deployed() });
+    expect(c.dailyCapWei).toBe(5000000000000000000n);
+    expect(c.maxRequestGas).toBe(8000000n);
     expect(c.deployments.contracts.RoomFactory).toBe(FACTORY);
   });
 
   it("requires the RPC URL and a well-formed operator key", () => {
-    expect(() => loadConfig({ DRIP_OPERATOR_PRIVATE_KEY: KEY, DEPLOYMENTS_PATH: deployed() })).toThrow(/RPC_URL/);
-    expect(() => loadConfig({ RPC_URL: "http://x", DRIP_OPERATOR_PRIVATE_KEY: "0x12", DEPLOYMENTS_PATH: deployed() })).toThrow(/32-byte/);
+    expect(() => loadConfig({ RELAYER_PRIVATE_KEY: KEY, DEPLOYMENTS_PATH: deployed() })).toThrow(/RPC_URL/);
+    expect(() => loadConfig({ RPC_URL: "http://x", RELAYER_PRIVATE_KEY: "0x12", DEPLOYMENTS_PATH: deployed() })).toThrow(/32-byte/);
   });
 });

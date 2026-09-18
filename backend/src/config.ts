@@ -8,29 +8,21 @@ export const FORBIDDEN_CHAIN_IDS = new Set([143]);
 
 export interface Deployments {
   chainId: number;
-  contracts: { RoomFactory: Address; KokoToken: Address };
+  contracts: { RoomFactory: Address; KokoToken: Address; Forwarder: Address };
 }
 
-export interface DripConfig {
+export interface RelayConfig {
   rpcUrl: string;
   operatorKey: Hex;
   deployments: Deployments;
   ledgerPath: string;
   port: number;
-  /** Sent once per address on first sign-in. */
-  dripWei: bigint;
-  /** Participants below this get topped up before a question opens. */
-  topUpThresholdWei: bigint;
-  /** Top-ups bring the balance back to this level. */
-  topUpTargetWei: bigint;
-  /** Hard ceiling on MON sent per rolling 24 h, across all rooms. */
+  /** Hard ceiling on MON the relayer spends on gas per rolling 24 h. */
   dailyCapWei: bigint;
-  /** Max first-time drips per room per hour (a room holds at most 50 participants). */
-  roomDripsPerHour: number;
-  /** Min gap between two top-up rounds for the same room. */
-  roomTopUpIntervalMs: number;
-  /** Max drip requests per address per minute (answers repeat clicks, not repeat drips). */
-  addressRequestsPerMinute: number;
+  /** Largest gas a single signed request may ask the forwarder to pass on (creating a room is the heaviest call). */
+  maxRequestGas: bigint;
+  /** Relayed requests per signer per minute. */
+  signerRequestsPerMinute: number;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -49,15 +41,19 @@ export function loadDeployments(path: string): Deployments {
   if (FORBIDDEN_CHAIN_IDS.has(chainId)) throw new Error(`${path}: chain ${chainId} is mainnet; testnet only`);
   const factory = raw.contracts?.RoomFactory;
   const token = raw.contracts?.KokoToken;
-  for (const [name, value] of [["RoomFactory", factory], ["KokoToken", token]] as const) {
+  const forwarder = raw.contracts?.Forwarder;
+  for (const [name, value] of [["RoomFactory", factory], ["KokoToken", token], ["Forwarder", forwarder]] as const) {
     if (typeof value !== "string" || !isAddress(value)) throw new Error(`${path}: ${name} is not an address`);
   }
-  return { chainId, contracts: { RoomFactory: factory as Address, KokoToken: token as Address } };
+  return {
+    chainId,
+    contracts: { RoomFactory: factory as Address, KokoToken: token as Address, Forwarder: forwarder as Address },
+  };
 }
 
 /** True when the deployments file still holds the pre-deploy placeholder. */
 export function isPlaceholder(d: Deployments): boolean {
-  return d.contracts.RoomFactory.toLowerCase() === zeroAddress;
+  return Object.values(d.contracts).some((a) => a.toLowerCase() === zeroAddress);
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -66,9 +62,9 @@ function required(env: NodeJS.ProcessEnv, name: string): string {
   return v;
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): DripConfig {
-  const operatorKey = required(env, "DRIP_OPERATOR_PRIVATE_KEY");
-  if (!/^0x[0-9a-fA-F]{64}$/.test(operatorKey)) throw new Error("DRIP_OPERATOR_PRIVATE_KEY must be a 0x-prefixed 32-byte hex key");
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
+  const operatorKey = required(env, "RELAYER_PRIVATE_KEY");
+  if (!/^0x[0-9a-fA-F]{64}$/.test(operatorKey)) throw new Error("RELAYER_PRIVATE_KEY must be a 0x-prefixed 32-byte hex key");
   const deployments = loadDeployments(env.DEPLOYMENTS_PATH ?? DEFAULT_DEPLOYMENTS_PATH);
   if (isPlaceholder(deployments)) {
     throw new Error("deployments file still has placeholder addresses; deploy contracts first");
@@ -77,14 +73,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): DripConfig {
     rpcUrl: required(env, "RPC_URL"),
     operatorKey: operatorKey as Hex,
     deployments,
-    ledgerPath: env.DRIP_LEDGER_PATH ?? resolve(here, "../.data/drip-ledger.json"),
+    ledgerPath: env.RELAY_LEDGER_PATH ?? resolve(here, "../.data/relay-ledger.json"),
     port: Number(env.PORT ?? 8787),
-    dripWei: parseEther(env.DRIP_AMOUNT_MON ?? "0.1"),
-    topUpThresholdWei: parseEther(env.TOPUP_THRESHOLD_MON ?? "0.02"),
-    topUpTargetWei: parseEther(env.TOPUP_TARGET_MON ?? "0.1"),
     dailyCapWei: parseEther(env.DAILY_CAP_MON ?? "5"),
-    roomDripsPerHour: Number(env.ROOM_DRIPS_PER_HOUR ?? 60),
-    roomTopUpIntervalMs: Number(env.ROOM_TOPUP_INTERVAL_MS ?? 10_000),
-    addressRequestsPerMinute: Number(env.ADDRESS_REQUESTS_PER_MINUTE ?? 5),
+    maxRequestGas: BigInt(env.MAX_REQUEST_GAS ?? "8000000"),
+    signerRequestsPerMinute: Number(env.SIGNER_REQUESTS_PER_MINUTE ?? 30),
   };
 }

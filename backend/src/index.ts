@@ -1,15 +1,16 @@
+import { formatEther } from "viem";
 import { Ledger } from "./ledger.js";
 import { loadConfig } from "./config.js";
 import { ViemChain } from "./chain.js";
-import { DripService } from "./drip.js";
-import { createDripServer } from "./server.js";
+import { RelayService } from "./relay.js";
+import { createRelayServer } from "./server.js";
 
 const config = loadConfig();
 const chain = new ViemChain({
   rpcUrl: config.rpcUrl,
   chainId: config.deployments.chainId,
   operatorKey: config.operatorKey,
-  factory: config.deployments.contracts.RoomFactory,
+  contracts: config.deployments.contracts,
 });
 
 const actualChainId = await chain.getChainId();
@@ -18,8 +19,11 @@ if (actualChainId !== config.deployments.chainId) {
 }
 
 const ledger = new Ledger(config.ledgerPath);
-const service = new DripService(chain, ledger, config);
-const server = createDripServer(service, { allowedOrigin: process.env.ALLOWED_ORIGIN });
-server.listen(config.port, () => {
-  console.log(`[drip] operator ${chain.operator} on chain ${actualChainId}, listening on :${config.port}`);
+const service = new RelayService(chain, ledger, config);
+const server = createRelayServer(service, { allowedOrigin: process.env.ALLOWED_ORIGIN });
+server.listen(config.port, async () => {
+  const bal = await chain.getOperatorBalance();
+  console.log(`[relay] relayer ${chain.operator} (${formatEther(bal)} MON) on chain ${actualChainId}, listening on :${config.port}`);
+  // Monad: an account needs its 10 MON reserve before it can send ordinary transactions.
+  if (bal < 10n ** 19n) console.warn("[relay] WARNING: relayer holds under 10 MON; Monad will refuse its transactions");
 });

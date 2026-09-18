@@ -1,47 +1,36 @@
 import { getAddress, type Address, type Hex } from "viem";
-import type { Chain } from "../../src/chain.js";
+import type { Chain, ForwardRequest, Simulation } from "../../src/chain.js";
 
-/** In-memory chain: rooms by code, balances, and a log of every send. */
+/** In-memory chain: which targets are ours, which signatures verify, and a log of relayed requests. */
 export class FakeChain implements Chain {
   readonly operator = getAddress("0x00000000000000000000000000000000000000aa");
-  readonly rooms = new Map<string, { address: Address; participants: Address[] }>();
-  /** Lowercased addresses that called leave(); still in the room list, like the real contract. */
-  readonly left = new Set<string>();
-  readonly balances = new Map<string, bigint>();
-  readonly sends: Array<{ to: Address; wei: bigint }> = [];
-  failNextSend = false;
-  failResolve = false;
-  sendDelayMs = 0;
+  readonly token = getAddress("0x00000000000000000000000000000000000000f7");
+  readonly factory = getAddress("0x00000000000000000000000000000000000000fa");
+  readonly rooms = new Set<string>();
+  readonly executed: ForwardRequest[] = [];
+  verifies = true;
+  simulation: Simulation = { ok: true };
+  failRead = false;
+  failExecute = false;
+  costWei = 10n ** 16n;
 
-  addRoom(code: string, address: string, participants: string[] = []): Address {
-    const a = getAddress(address);
-    this.rooms.set(code, { address: a, participants: participants.map((p) => getAddress(p)) });
-    return a;
+  async isFactoryRoom(address: Address): Promise<boolean> {
+    if (this.failRead) throw new Error("rpc down");
+    return this.rooms.has(address.toLowerCase());
   }
 
-  async getBalance(address: Address): Promise<bigint> {
-    return this.balances.get(address.toLowerCase()) ?? 0n;
+  async verify(): Promise<boolean> {
+    if (this.failRead) throw new Error("rpc down");
+    return this.verifies;
   }
 
-  async resolveRoom(code: string): Promise<Address | null> {
-    if (this.failResolve) throw new Error("rpc down");
-    return this.rooms.get(code)?.address ?? null;
+  async simulate(): Promise<Simulation> {
+    return this.simulation;
   }
 
-  async getActiveParticipants(room: Address): Promise<Address[]> {
-    for (const r of this.rooms.values()) if (r.address === room) return r.participants.filter((p) => !this.left.has(p.toLowerCase()));
-    return [];
-  }
-
-  async sendValue(to: Address, wei: bigint): Promise<Hex> {
-    if (this.sendDelayMs) await new Promise((r) => setTimeout(r, this.sendDelayMs));
-    if (this.failNextSend) {
-      this.failNextSend = false;
-      throw new Error("send failed");
-    }
-    this.sends.push({ to, wei });
-    const key = to.toLowerCase();
-    this.balances.set(key, (this.balances.get(key) ?? 0n) + wei);
-    return `0x${this.sends.length.toString(16).padStart(64, "0")}` as Hex;
+  async execute(req: ForwardRequest): Promise<{ txHash: Hex; costWei: bigint }> {
+    if (this.failExecute) throw new Error("send failed");
+    this.executed.push(req);
+    return { txHash: `0x${this.executed.length.toString(16).padStart(64, "0")}` as Hex, costWei: this.costWei };
   }
 }

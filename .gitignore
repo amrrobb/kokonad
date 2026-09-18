@@ -14,3 +14,6 @@ generated/
 
 # local-only hackathon credentials and resources
 resources/
+
+# forge keeps timestamped copies of every broadcast; run-latest.json is the record
+contracts/broadcast/**/run-[0-9]*.json
