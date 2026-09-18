@@ -111,7 +111,7 @@ export default function RoomPage() {
         <div className="mt-10 flex flex-col gap-3 text-center">
           <h1 className="text-[24px] font-black">Room not found.</h1>
           <p className="font-extrabold text-ink-2">Check the code with your host.</p>
-          <Link href="/" className="mt-4 font-black text-coral">
+          <Link href="/join" className="mt-4 font-black text-coral">
             Try another code
           </Link>
         </div>

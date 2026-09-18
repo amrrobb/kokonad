@@ -6,7 +6,7 @@ import { PrimaryButton, Screen } from "@/components/ui";
 
 const CODE = /^[A-HJ-NP-Z2-9]{6}$/;
 
-export default function Home() {
+export default function Join() {
   const router = useRouter();
   const [code, setCode] = useState("");
   const valid = CODE.test(code);
