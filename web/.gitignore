@@ -42,3 +42,6 @@ next-env.d.ts
 
 # keep the documented template
 !.env.example
+
+# local browser-driving scripts and screenshots
+.e2e/

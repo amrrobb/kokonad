@@ -34,3 +34,21 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Playing a room (week 1)
+
+`/` takes a room code and `/r/[code]` joins it. The participant's account signs requests and
+`backend/` relays them, so the account never needs MON. Run the relayer alongside the app:
+
+```bash
+cd ../backend && pnpm start      # ALLOWED_ORIGIN=http://localhost:3000 in backend/.env
+cd ../web && pnpm dev            # NEXT_PUBLIC_RELAY_URL=http://localhost:8787 in web/.env.local
+```
+
+**Known limitation, on purpose:** until Dynamic is configured, the account key lives in memory
+for the tab only (`lib/signer.ts`). CLAUDE.md forbids keeping it in browser storage. Reloading the
+tab starts a new account: the old one stays in the room with its coins and the player sees the
+name screen again. This is not a bug to fix in storage; Dynamic's persistent account replaces it.
+
+**Watch when testing with more people:** the lobby polls the chain every 2 s and makes 7 + 2N
+reads per poll (N = people in the room). Envio replaces these reads in week 2.

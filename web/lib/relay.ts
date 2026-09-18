@@ -1,0 +1,72 @@
+import type { Address, Hex } from "viem";
+import { forwarderAbi } from "./abi";
+import { CHAIN_ID, contracts } from "./deployments";
+import { publicClient } from "./room";
+import { getAccount } from "./signer";
+
+const RELAY_URL = process.env.NEXT_PUBLIC_RELAY_URL ?? "http://localhost:8787";
+
+const types = {
+  ForwardRequest: [
+    { name: "from", type: "address" },
+    { name: "to", type: "address" },
+    { name: "value", type: "uint256" },
+    { name: "gas", type: "uint256" },
+    { name: "nonce", type: "uint256" },
+    { name: "deadline", type: "uint48" },
+    { name: "data", type: "bytes" },
+  ],
+} as const;
+
+/** What went wrong, in words a participant can act on. Never "transaction", "gas" or "sign". */
+export class PlainError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+const PLAIN: Record<string, string> = {
+  WrongCode: "Room not found. Check the code with your host.",
+  UnknownCode: "Room not found. Check the code with your host.",
+  RoomIsClosed: "This room has closed.",
+  RoomFull: "This room is full.",
+  InsufficientBudget: "The host hasn't added coins yet. Ask your host.",
+  HostCannotJoin: "You're hosting this room.",
+  rate_limited: "Too many tries at once. Wait a moment and try again.",
+  daily_cap: "The game is busy right now. Try again in a little while.",
+};
+
+/** Signs `data` for `to` with the player's account and asks the relayer to submit it. Resolves once it is in. */
+export async function send(to: Address, data: Hex, gas = 500_000n): Promise<void> {
+  const account = getAccount();
+  const nonce = await publicClient.readContract({ address: contracts.Forwarder, abi: forwarderAbi, functionName: "nonces", args: [account.address] });
+  const deadline = Math.floor(Date.now() / 1000) + 600;
+  const message = { from: account.address, to, value: 0n, gas, nonce, deadline, data };
+  const signature = await account.signTypedData({
+    domain: { name: "Kokonad", version: "1", chainId: CHAIN_ID, verifyingContract: contracts.Forwarder },
+    types,
+    primaryType: "ForwardRequest",
+    message,
+  });
+
+  let res: Response;
+  try {
+    res = await fetch(`${RELAY_URL}/relay`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ request: { from: account.address, to, value: "0", gas: gas.toString(), deadline, data, signature } }),
+    });
+  } catch {
+    throw new PlainError("Something didn't go through. Your account is fine.", "network");
+  }
+  const body = (await res.json().catch(() => ({}))) as { status?: string; txHash?: Hex; reason?: string; detail?: string };
+  if (body.status === "relayed" && body.txHash) {
+    await publicClient.waitForTransactionReceipt({ hash: body.txHash });
+    return;
+  }
+  const code = body.detail ?? body.reason ?? "unknown";
+  throw new PlainError(PLAIN[code] ?? PLAIN[body.reason ?? ""] ?? "Something didn't go through. Your account is fine.", code);
+}
