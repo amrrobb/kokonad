@@ -8,18 +8,19 @@ Week 1, day 1–2. Page: `web/app/spike/page.tsx`, route `/spike`. Author: solo 
 and costs exactly one passkey prompt per derivation. Verified headless with Chrome 153 virtual
 authenticators (evidence below).
 
-**Dynamic half: PENDING the sandbox environment ID.** The code path is built and compiles, but sign-in,
-embedded account creation on 10143, delegated access and the no-popup sample call have not been
-exercised against a live environment yet. This section is updated the moment the ID is available.
+**Dynamic half: NOT TESTED — no sandbox environment ID was available on 18 Sep.** The code path is
+built, compiles, and is gated behind `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID` so the page builds and the
+Mera half works without it. Sign-in, embedded account creation on 10143, delegated access and the
+no-popup sample call have not been exercised against a live environment. **Coexistence is therefore
+untested**; the honest state is "no evidence either way", not "yes".
 
-**Coexistence: PENDING the Dynamic run.** What is already known from reading both SDKs:
+**Coexistence: PENDING the Dynamic run.** Expectations before the run (Mera from reading its source; Dynamic from its docs, to be confirmed by the runtime probe):
 
 - Mera is a stateless function library (`@category-labs/mera` 0.2.0, ~1600 LOC, no provider, no
   global state, no iframe). It calls `navigator.credentials.create/get` with `rp.id` set by us.
-- Dynamic's passkey-based embedded wallet runs its WebAuthn ceremonies from its own relay iframe
-  (`relay.dynamicauth.com`), so its passkeys are bound to Dynamic's relying-party ID, not ours, unless
-  a custom domain is configured. That means the two libraries should not see each other's passkeys
-  and cannot collide on `rpId`. The spike page records every `navigator.credentials` call with its
+- Dynamic's embedded wallet is MPC-based; passkeys there are a sign-in / MFA method handled by Dynamic's
+  own flow, expected to use Dynamic's relying-party ID rather than ours. If so the two libraries never
+  see each other's passkeys and cannot collide on `rpId`. Unverified until the run. The spike page records every `navigator.credentials` call with its
   `rpId` to confirm this at runtime (section 3 of the page).
 - No bundle conflict: `pnpm build` passes with both installed (Next 16.3.5, Turbopack). Mera pins
   `@noble/hashes` 2.2.0 and `@noble/curves` 2.2.0; viem 2.56 uses its own copies. No peer warnings.
@@ -83,9 +84,35 @@ If step 3 shows *This device's passkey cannot derive a secret*, the platform aut
 
 ## Evidence — Dynamic
 
-_Pending environment ID. To be filled: sign-in method used, account address, network reported by the
-wallet client, delegation status, whether the sample confirm and the empty action showed any prompt,
-number of `navigator.credentials` calls and their `rpId` during sign-in._
+None yet. Run the checklist below as soon as the ID lands; it takes about ten minutes.
+
+### Dynamic checklist for the next session
+
+Prerequisites (user confirmed done in the sandbox on 18 Sep): embedded wallets on with automatic
+creation; delegated access enabled; transaction confirmation screen off; EVM chains enabled.
+
+```sh
+cd web && echo 'NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=<uuid>' >> .env.local && pnpm dev
+```
+
+Open `http://localhost:3000/spike` in Chrome and record, in this order:
+
+| # | Step | Expect | Record in this doc |
+|---|---|---|---|
+| 1 | Section 1 shows the Dynamic widget, log line `Dynamic loaded` | no console errors, `Loaded: yes` | any console error verbatim |
+| 2 | Sign in with **Google** (then repeat the whole list with **passkey** sign-in in a fresh profile) | `Signed in: yes`, `Account: 0x…`, `Account kind: … (embedded)` | address, kind, seconds to account |
+| 3 | `Network` row | `Monad testnet (10143)`; if not, `mergeNetworks` in `providers.tsx` is wrong or the chain is off in the dashboard | value shown |
+| 4 | Press **Confirm a sample answer** | signature appears, log says `passkey prompts: 0`, and no Dynamic modal opened | prompts count, whether a modal appeared, ms |
+| 5 | Press **Send an empty action** | expected failure `insufficient funds` (account has 0 MON) — that still proves the write path reaches the RPC with no popup; with a faucet drip it should return a hash | error text or tx hash |
+| 6 | Press **Let the app act for me** | Dynamic's delegation prompt, then `App may act for me: delegated`; if `feature off in dashboard`, delegated access is not enabled for this environment | status after, any error |
+| 7 | Section 2: **I have no passkey here yet**, then **Get this question's key** | works exactly as in the headless run, *same key* | fingerprint, prompts |
+| 8 | Section 3: `Passkey domains seen` | during passkey sign-in (step 2 variant) note whether Dynamic's ceremonies show up at all in the log and with which `rpId`; Mera's must show `localhost` | list of rpIds and which action produced each |
+| 9 | Repeat step 7 **after** step 6 and step 4 | still one prompt per derivation, no extra Dynamic prompt | prompts |
+
+Coexistence verdict rule: **yes** if steps 4, 7 and 9 all hold in both sign-in variants (no extra prompts,
+different or absent Dynamic rpId, Mera key unchanged). **no** if any Mera derivation triggers a Dynamic
+prompt, Dynamic sign-in breaks after a Mera passkey exists on the origin, or `pnpm build` breaks with both
+(already known to pass). If **no**: drop Mera per CLAUDE.md, salt in encrypted localStorage, note in README.
 
 ## Recommended integration shape (provisional, to confirm after the Dynamic run)
 
