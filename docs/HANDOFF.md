@@ -81,7 +81,7 @@ Definition of done: **one question playable end-to-end on Monad testnet from two
 ## Not yet done from the design handoff
 - Copy changes listed in `docs/CHANGES-2026-09-17.md` have **not** been applied to
   `docs/screens.html` / `docs/mockup-v2.html`. Apply them when those screens are first built.
-- Git repo is initialised but has **no commits**. First commit should be this docs baseline.
+- ~~Git repo has no commits~~ — done: baseline and handoff docs are committed and pushed.
 
 ---
 
