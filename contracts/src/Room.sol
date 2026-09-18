@@ -210,6 +210,7 @@ contract Room is ReentrancyGuard, ERC2771Context {
     error NothingToClaim();
     error BadOutcome();
     error DisputeWindowOpen();
+    error SessionKeyTaken();
 
     // ---------------------------------------------------------------------------------------------
     // Construction
@@ -316,6 +317,9 @@ contract Room is ReentrancyGuard, ERC2771Context {
         Participant storage p = participants[_msgSender()];
         if (!joined[_msgSender()] || p.left) revert NotParticipant();
         if (key == address(0) || joined[key]) revert BadQuestion();
+        // A key already acting for someone else cannot be re-pointed; only its owner may renew it.
+        address current = sessionKeyOwner[key];
+        if (current != address(0) && current != _msgSender()) revert SessionKeyTaken();
         sessionKeyOwner[key] = _msgSender();
         sessionKeyExpiry[key] = expiry;
         emit SessionKeyRegistered(_msgSender(), key, expiry);

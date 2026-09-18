@@ -207,4 +207,30 @@ contract RoomRelayTest is RoomTestBase {
         assertEq(token.balanceOf(alice), 0);
         assertEq(alice.balance, 0);
     }
+
+    function test_sessionKeyCannotBeTakenOverByAnotherParticipant() public {
+        (Room room, string memory code) = _sponsoredRoom();
+        _relay(_request(aliceKey, address(room), abi.encodeCall(Room.join, (code, "Alice"))));
+        _relay(_request(bobKey, address(room), abi.encodeCall(Room.join, (code, "Bob"))));
+        address key = makeAddr("aliceSessionKey");
+        uint64 expiry = uint64(block.timestamp + 1 days);
+        _relay(_request(aliceKey, address(room), abi.encodeCall(Room.registerSessionKey, (key, expiry))));
+        assertEq(room.sessionKeyOwner(key), alice);
+
+        // Bob tries to re-point Alice's key at himself.
+        ERC2771Forwarder.ForwardRequestData memory req =
+            _request(bobKey, address(room), abi.encodeCall(Room.registerSessionKey, (key, expiry)));
+        // The forwarder reports inner reverts as FailedCall; the direct call below pins the reason.
+        vm.prank(relayer);
+        vm.expectRevert(abi.encodeWithSignature("FailedCall()"));
+        forwarder.execute(req);
+        vm.prank(bob);
+        vm.expectRevert(Room.SessionKeyTaken.selector);
+        room.registerSessionKey(key, expiry);
+        assertEq(room.sessionKeyOwner(key), alice, "key still acts for Alice");
+
+        // Alice can still renew her own key.
+        _relay(_request(aliceKey, address(room), abi.encodeCall(Room.registerSessionKey, (key, expiry + 1))));
+        assertEq(room.sessionKeyExpiry(key), expiry + 1);
+    }
 }
