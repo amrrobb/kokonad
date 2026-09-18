@@ -52,6 +52,17 @@ Verified facts: Envio supports Monad testnet (`network id 10143`); CRE lists Mon
 ## Week 1 targets (16–22 Sep, from PRD §11)
 Definition of done: **one question playable end-to-end on Monad testnet from two browsers.**
 
+**Status 19 Sep: met.** A host created a room from `/host` and ran a question while two players in two
+browsers (360 and 1280 px) answered; the chain paid the winner and the loser got nothing, with no MON in any
+of the three accounts (commits fc2eae7, 9549f37). Per item below:
+1. Done: contracts with ERC-2771 relaying, 60 Foundry tests, deployed from block 63559698.
+2. Half done: Mera PRF proven headless; **Dynamic untested, waiting on the environment ID** from the user.
+3. Replaced by the relayer (Monad's 10 MON reserve), 43 backend tests, proven on testnet.
+4. Done: participant join/lobby/question/result, host create/seal/open/resolve/pay out, landing at `/`.
+5 and 6. User-side, not started as far as the repo knows.
+**Blocking week 2:** the relayer holds ~11.2 MON, only ~1.2 usable above the reserve; a 5-person session
+needs ~5 MON. Send testnet MON to 0x438FD476037B8Ae8a550FC996EECAdcF20e22d5d.
+
 1. Scaffold `contracts/` (Foundry): `KokoToken`, `Room` (commit / reveal / resolve / settle),
    `RoomFactory`; tests per contract + `Room.e2e.t.sol`. Deploy to 10143, write
    `deployments/10143.json`.

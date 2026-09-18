@@ -155,8 +155,10 @@ forge script script/Deploy.s.sol --rpc-url $MONAD_TESTNET_RPC --broadcast
 # indexer
 cd indexer && pnpm install && pnpm dev
 
-# backend (relayer)
+# backend (relayer): the web app needs it running
 cd backend && pnpm install && pnpm test && pnpm test:integration
+cp .env.example .env   # RPC_URL, RELAYER_PRIVATE_KEY (wallet holding well over 10 MON), ALLOWED_ORIGIN=http://localhost:3000
+pnpm start             # listens on :8787
 
 # realtime
 cd realtime && pnpm install && pnpm dev
@@ -164,6 +166,11 @@ cd realtime && pnpm install && pnpm dev
 # web
 cd web && pnpm install && cp .env.example .env.local && pnpm dev
 ```
+
+With the relayer and the web app running: open `/`, "Create room" to host at `/host`, and join from another
+browser via "Have a code? Join" (`/join`, then `/r/<CODE>`). Nobody needs MON: every action is signed in the
+browser and paid for by the relayer. Until Dynamic sign-in is configured, the account lives in the tab, so a
+reload starts a new one; a room can only be hosted from the tab that created it.
 
 Required environment variables are listed in each folder's `.env.example`: RPC URL, Dynamic environment ID, Envio endpoint, WebSocket endpoint, LLM API key.
 
