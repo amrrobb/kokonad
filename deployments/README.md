@@ -5,7 +5,7 @@ addresses from here; nothing else in the repo hardcodes an address.
 
 | File | Status |
 |---|---|
-| `10143.json` | **Placeholder.** Zero addresses until the first Monad testnet deploy. No deployer key existed when the contracts were written (week 1). |
+| `10143.json` | **Deployed 18 Sep 2026**, `KokoToken` and `RoomFactory` from block 63545374 (the Envio `start_block`). `HostRegistry` is still zero until week 2. |
 
 To deploy (from `contracts/`, with `.env` holding `MONAD_TESTNET_RPC` and `DEPLOYER_PRIVATE_KEY`):
 

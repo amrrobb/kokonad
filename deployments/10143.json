@@ -1,11 +1,15 @@
 {
   "chainId": 10143,
   "network": "monad-testnet",
-  "deployedAt": null,
-  "deployBlock": null,
+  "deployedAt": "2026-09-18",
+  "deployBlock": 63545374,
   "contracts": {
-    "KokoToken": "0x0000000000000000000000000000000000000000",
-    "RoomFactory": "0x0000000000000000000000000000000000000000",
+    "KokoToken": "0x79e30C27301c72f236ce69FebB4aD041b7C88e3d",
+    "RoomFactory": "0x7F60413c027824Ee89119A921b5972328519B005",
     "HostRegistry": "0x0000000000000000000000000000000000000000"
+  },
+  "transactions": {
+    "KokoToken": "0xed122bdb5530c3e9bc52920330306b43d02886bb1767a7f53c96f822d51a88a7",
+    "RoomFactory": "0x50f04888b6434996ccd0229a4cf8f07cbc650a69ad2ce19e71d49b0f28e36681"
   }
 }
