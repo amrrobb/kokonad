@@ -1,0 +1,15 @@
+{
+  "q1a": "0xa424fc4b1d84573d4cec82948cb7896584ca18d804bc5037bb9de49c2b759ca8",
+  "q1b": "0xa424fc4b1d84573d4cec82948cb7896584ca18d804bc5037bb9de49c2b759ca8",
+  "q2": "0x08d82234d3f9abca04a26f04c6fc78fb3b70c38a94ffdf5038d569a08da8a0d3",
+  "q1B": null,
+  "q1C": "0x553ff5ba7a17022aafe2815f611eb4fd2906b755b1e302ad82e215509dfd7dd3",
+  "deterministicSameDevice": true,
+  "namespaced": true,
+  "reproducedOnSecondProfile": "harness cannot carry PRF secret across virtual authenticators; needs a synced real passkey",
+  "differentPasskeyDiffers": true,
+  "promptCountA": "3",
+  "rpIdsA": "localhost",
+  "logA": "11:09:30 AM passkey create rpId=localhost prf=yes -> ok\n11:09:30 AM Mera: new passkey + key: ok in 50 ms, passkey prompts: 1\n11:09:30 AM Mera: new passkey + key: namespace=kokonad/room/KOKO42/q/1 digest=0xa424fc4b1d84573d4cec82948cb7896584ca18d804bc5037bb9de49c2b759ca8\n11:09:30 AM passkey get rpId=localhost prf=yes -> ok\n11:09:30 AM Mera: key from existing passkey: ok in 28 ms, passkey prompts: 1\n11:09:30 AM Mera: key from existing passkey: namespace=kokonad/room/KOKO42/q/1 digest=0xa424fc4b1d84573d4cec82948cb7896584ca18d804bc5037bb9de49c2b759ca8\n11:09:30 AM passkey get rpId=localhost prf=yes -> ok\n11:09:30 AM Mera: key from existing passkey: ok in 27 ms, passkey prompts: 1\n11:09:30 AM Mera: key from existing passkey: namespace=kokonad/room/KOKO42/q/2 digest=0x08d82234d3f9abca04a26f04c6fc78fb3b70c38a94ffdf5038d569a08da8a0d3",
+  "logB": "11:09:32 AM passkey get rpId=localhost prf=yes -> ok\n11:09:32 AM Mera: key from existing passkey: failed after 40 ms, passkey prompts: 1. Authenticator did not return PRF output"
+}
