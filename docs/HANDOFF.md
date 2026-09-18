@@ -92,6 +92,10 @@ has its own Orca project "Metropolis"). Nothing below is in the PRD; keep it unt
 
 ### What happened
 - Repo created and pushed: **https://github.com/amrrobb/kokonad** (public, MIT, `main`, 1 commit).
+- **18 Sep: repo switched to PRIVATE** at the user's request (no org for a single repo). It **must be made
+  public again before submission** (13 Oct): the rules require a public repo, and the portal needs
+  `metropolis@hackathon.monad.xyz` as a collaborator. `gh repo edit amrrobb/kokonad --visibility public
+  --accept-visibility-change-consequences`.
   Decision: stay on the personal account; transfer to an org later takes a minute and redirects.
 - First orchestration attempt (`run_a147345ce7e1`, tasks `task_903456d7ad6d` A and
   `task_e585dc8882d3` B) died ~30 s after start, most likely an Orca restart ("Update installed ·
