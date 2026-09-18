@@ -57,7 +57,7 @@ Definition of done: **one question playable end-to-end on Monad testnet from two
    `deployments/10143.json`.
 2. Day 1–2 spike: Dynamic embedded wallet + delegated access **and** Mera PRF on one page.
    If they conflict, drop Mera cleanly (CLAUDE.md says so) and note it in README.
-3. `backend/drip`: 0.1 MON once per address, top-up below 0.02 before each question,
+3. ~~`backend/drip`~~ **Replaced 18 Sep by a relayer** (Monad 10 MON reserve; see ARCHITECTURE §2). Original: 0.1 MON once per address, top-up below 0.02 before each question,
    rate-limited per address and room.
 4. `web/`: participant question screen with mock data first (match `docs/screens.html` at 360px),
    then basic host screen. Landing from `design/handoff/landing.html` → `web/app/(marketing)/page.tsx`.

@@ -103,7 +103,7 @@ Full architecture and component boundaries: [`docs/ARCHITECTURE.md`](docs/ARCHIT
 contracts/     Foundry: contracts, tests, deploy scripts
 indexer/       Envio: config.yaml, schema.graphql, handlers
 realtime/      WebSocket server
-backend/       gas drip for new accounts (Node, viem)
+backend/       relayer: pays gas for signed player requests (Node, viem)
 web/           Next.js app (host + participant)
 cre/           Chainlink CRE workflow (stretch)
 deployments/   contract addresses per chain
@@ -136,10 +136,11 @@ implementation deliberately differs from the PRD function table.
 
 ### Backend status (week 1)
 
-`backend/` holds the gas drip: 0.1 MON once per address for a known room code, top-up below 0.02 MON
-before each question, limits per address, per room and per day. 53 unit tests and 6 integration tests
-on a local anvil node with the real contracts, where a zero-balance account is dripped and then joins
-a room on its own gas. It will not start until the contracts are deployed to 10143. See
+`backend/` is a relayer. Monad keeps a 10 MON reserve per account, so a fresh player account
+cannot pay its own gas. Players and hosts sign requests, and the relayer submits them through an
+ERC-2771 forwarder, so the contracts credit the signer. It relays only to Kokonad's own contracts, and
+only after the forwarder verifies the signature and a dry run shows the call succeeds. On Monad
+testnet, a host and a player each holding 0 MON created, funded and joined a room this way. See
 [`backend/README.md`](backend/README.md).
 
 ---
@@ -154,7 +155,7 @@ forge script script/Deploy.s.sol --rpc-url $MONAD_TESTNET_RPC --broadcast
 # indexer
 cd indexer && pnpm install && pnpm dev
 
-# backend (gas drip)
+# backend (relayer)
 cd backend && pnpm install && pnpm test && pnpm test:integration
 
 # realtime

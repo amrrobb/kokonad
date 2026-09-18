@@ -31,7 +31,7 @@ flowchart LR
   end
 
   subgraph Backend["Small backend"]
-    DRIP[Gas drip<br/>sends testnet MON]
+    DRIP[Relayer<br/>pays gas for signed requests]
     LLM[LLM · KIMI/Claude<br/>question builder]
   end
 
@@ -43,7 +43,7 @@ flowchart LR
   P --> MERA
   DYN -- signed tx --> RPC --> R
   H -- tx --> RPC
-  DRIP -- 0.1 MON on first sign-in + top-ups --> RPC
+  DRIP -- forwarder.execute(signed request) --> RPC
   R --> KT
   R --> HR
   R -- events --> ENV
@@ -65,7 +65,7 @@ Responsibility boundaries:
 | WebSocket | when animations fire, synced countdown | money, ordering, results |
 | Dynamic | who owns a wallet, tx signatures | answer contents |
 | Mera | the salt that makes a commit unguessable | anything beyond key derivation |
-| Gas drip | that a new wallet gets gas once | anything else |
+| Relayer | when a signed request is submitted (it can delay one) | who signed it, what it does, money, results |
 | LLM | suggested question text | the final question (host decides) |
 | CRE | outcomes for markets with a public data source | outcomes of room markets (host decides) |
 
@@ -77,7 +77,7 @@ A participant signs in with Google or a passkey and plays. Behind that, four thi
 
 ```
 sign-in (Dynamic)      → embedded wallet exists (MPC key: part on device, part with Dynamic)
-gas drip (backend)     → 0.1 testnet MON sent to the new address (~25 tx: join, deposit, 10 × commit+reveal, claims)
+relayer (backend)      → the account never needs MON: it signs requests and the relayer submits them via the ERC-2771 forwarder
 deposit (Room)         → sponsored: 20 coins credited from the host's budget on join ("Grab 20 coins"); pooled: participant deposits their own ("Put in 20 coins")
 delegation (Dynamic)   → one approval: the app may sign tx to this Room until the room closes
 ```
@@ -87,7 +87,7 @@ The lobby shows "Setting up your account…" until all four are done. If any fai
 ### Why each piece exists
 - **Embedded wallet, not an installed wallet.** Participants have no wallet and won't install one for a 30-minute game. To the contract they're a normal EVM address; to themselves they're "Rafi".
 - **Coins are deposits, not a faucet.** Sponsored: the host deposits a budget (starting deposit × expected people + seeds) and `join` credits each participant. Pooled: each participant deposits their own. Each opened question charges one play from every deposit into that question's pot; answering burns the play, sitting out forfeits it (PRD §5A). On testnet `KokoToken` is mintable by anyone to simulate having a stablecoin.
-- **Gas drip, not a faucet contract.** The pot token is mock, but gas on testnet is real MON, and a new wallet has zero. A contract can't hand out MON for `join()` because `join()` itself needs gas. So a 30-line Node service (viem) does it: receives an address after sign-in, checks it hasn't been dripped, sends 0.1 MON from the operator wallet, records it. Rate-limited per address and per room. Before each question opens, the backend tops up any participant below 0.02 MON so nobody is stuck at question 8. The operator wallet is funded once from the Monad testnet faucet; 10 people × 2 sessions needs < 3 MON. If Dynamic offers gas sponsorship (paymaster) on 10143, use it instead and keep the drip as fallback.
+- **Relayer, not a gas drip (changed 18 Sep 2026).** The plan was a 0.1 MON drip per new wallet. Measured on Monad testnet, that cannot work: Monad keeps a 10 MON reserve per account, and an account holding 0.1 to 1 MON could not send any ordinary transaction, even 11 minutes after funding. So players never hold gas. They sign an ERC-2771 `ForwardRequest`; the backend relayer submits it through OpenZeppelin's `ERC2771Forwarder`, and `Room`, `RoomFactory` and `KokoToken` read the signer via `_msgSender()`. The relayer only pays: it relays to Kokonad's own contracts, after the forwarder verifies the signature and a dry run succeeds. It can delay a request but cannot forge or alter one. Cost on testnet: about 0.44 MON to create a room, 0.01 to 0.03 MON per player action. If Dynamic offers gas sponsorship on 10143 later, it can replace the relayer.
 - **Delegated access, not a popup per tap.** `commitAnswer` and `revealAnswer` are transactions. A dialog on each would break a 30-second timer. The participant approves once in the lobby a delegation scoped to `{ target: Room, functions: [commitAnswer, revealAnswer, claim, dispute], expiry: room.closeAt }`. After that, tap = send.
 - **Host.** Holds the seed and sets results. May use an embedded wallet or an external one (MetaMask/Rabby via wagmi). For the demo the operator hosts with an external wallet for full control.
 
@@ -265,7 +265,7 @@ kokonad/
   contracts/            Foundry: KokoToken, RoomFactory, Room, HostRegistry, test/, script/
   indexer/              Envio: config.yaml, schema.graphql, src/handlers.ts
   realtime/             Node WS server
-  backend/              gas drip + LLM question builder (one small service)
+  backend/              relayer + LLM question builder (one small service)
   web/                  Next.js: app/(participant) app/host lib/dynamic lib/mera lib/envio lib/ws
   cre/                  score-guessing workflow (stretch)
   deployments/10143.json
@@ -276,7 +276,7 @@ kokonad/
 
 ## 12. Integration order (so not everything is open at once)
 
-1. Day 1–2: Dynamic embedded + delegated on 10143, and Mera PRF on the same page. The only experiment that can change the bounty plan. Also: gas drip service (30 lines) and a Monad faucet claim.
+1. Day 1–2: Dynamic embedded + delegated on 10143, and Mera PRF on the same page. The only experiment that can change the bounty plan. Also: gas drip service (30 lines) and a Monad faucet claim (superseded 18 Sep by the relayer, see §2).
 2. Week 1: contracts + frontend with mock data. No Envio/WS yet.
 3. Week 2: Envio (screens start reading the chain), then WS (screens start feeling instant). This order matters: WS without Envio tempts you to treat WS as truth.
 4. Week 3: LLM builder, polish, CRE if time.
@@ -286,4 +286,4 @@ kokonad/
 
 Allowed: "questions are sealed before they open", "no one can see answers before time is up", "fastest order is decided by Monad blocks, not our server", "the pot is split by the contract, not the organizers", "salts never leave the device" (Mera path).
 
-Not allowed: "fully cheat-proof" (the host still sets the result; the sanction is social), "millisecond precision" (fair-by-block), "serverless" (there is a WS server, a drip, and an LLM call; none of them touch money).
+Not allowed: "fully cheat-proof" (the host still sets the result; the sanction is social), "millisecond precision" (fair-by-block), "serverless" (there is a WS server, a relayer, and an LLM call; none of them touch money).

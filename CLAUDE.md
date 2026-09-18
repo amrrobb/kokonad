@@ -19,7 +19,7 @@ Live guessing games for community events on Monad testnet (10143). Host writes q
 - Contracts: Solidity `^0.8.24`, Foundry. `forge fmt` before commit. Tests in `contracts/test/`, one file per contract, plus `Room.e2e.t.sol` for the full lifecycle.
 - Web: Next.js (app router), TypeScript strict, wagmi v2 + viem, Tailwind. Package manager: `pnpm`. Node 20.
 - Indexer: Envio HyperIndex, TypeScript handlers.
-- Realtime & backend: Node 20, TypeScript, `ws` (or Socket.IO), viem for the gas drip.
+- Realtime & backend: Node 20, TypeScript, `ws` (or Socket.IO), viem for the relayer.
 - Chain config lives in `deployments/10143.json`; every package reads addresses from there. Never hardcode an address elsewhere.
 - Env vars: each package has `.env.example`; never commit `.env*`.
 
@@ -47,7 +47,7 @@ See ARCHITECTURE §11. Don't add top-level folders without a reason written in t
 
 ## Integrations (see ARCHITECTURE for details)
 - **Dynamic**: login, embedded wallet, delegated access. Fallback: own session key (`registerSessionKey`).
-- **Gas drip**: `backend/drip` sends 0.1 MON once per address and tops up below 0.02 MON before each question. Rate-limit per address and per room.
+- **Relayer** (replaced the gas drip, 18 Sep): Monad keeps a 10 MON reserve per account, so players cannot pay gas. They sign ERC-2771 requests; `backend/` relays them through the forwarder in `deployments/10143.json` after verify + dry run. Contracts read `_msgSender()`, never `msg.sender`. Rate-limit per signer, daily gas cap. The relayer wallet must hold well over 10 MON.
 - **Mera PRF**: salt derivation only. If it conflicts with Dynamic, remove it cleanly; don't leave dead code.
 - **Envio**: schema in ARCHITECTURE §5. Derived fields computed in handlers, not in the UI.
 - **CRE**: stretch. Don't scaffold it before week 3.
