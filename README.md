@@ -116,13 +116,13 @@ docs/          PRD, architecture, wireframes, mockups
 
 | Contract | Address |
 |---|---|
-| Forwarder (ERC-2771) | [`0x0Bd2c46bF04a8CC797cAb5587de4DE68dC41BF93`](https://testnet.monadvision.com/address/0x0Bd2c46bF04a8CC797cAb5587de4DE68dC41BF93) |
-| KokoToken | [`0x2165526fce349F238B546aEdEcbe74a0F941a3a9`](https://testnet.monadvision.com/address/0x2165526fce349F238B546aEdEcbe74a0F941a3a9) |
-| RoomFactory | [`0xCA3cC7361ef62D69d9e6a344B492A176DA23BeD4`](https://testnet.monadvision.com/address/0xCA3cC7361ef62D69d9e6a344B492A176DA23BeD4) |
+| Forwarder (ERC-2771) | [`0x2EcC66246C9Bfe144E674231992EE4D0e965F6D4`](https://testnet.monadvision.com/address/0x2EcC66246C9Bfe144E674231992EE4D0e965F6D4) |
+| KokoToken | [`0x9Cb56A3d92A8A2b248c5d208DC517f993Dbed930`](https://testnet.monadvision.com/address/0x9Cb56A3d92A8A2b248c5d208DC517f993Dbed930) |
+| RoomFactory | [`0x4740943E5395CdC46cD41B5174e0A361A2E97bA9`](https://testnet.monadvision.com/address/0x4740943E5395CdC46cD41B5174e0A361A2E97bA9) |
 | HostRegistry | `0x…` |
 
 Rooms are deployed per session by `RoomFactory`; each address is shown on the host screen and in the indexer.
-Addresses live in [`deployments/10143.json`](deployments/10143.json) (deployed 18 Sep 2026 from block 63558669; `HostRegistry` ships in week 2).
+Addresses live in [`deployments/10143.json`](deployments/10143.json) (deployed 18 Sep 2026 from block 63559698; `HostRegistry` ships in week 2).
 
 ### Contracts status (week 1)
 
