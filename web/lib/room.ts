@@ -147,3 +147,52 @@ async function readLatestQuestionAt(address: Address, me: Address, blockNumber: 
   return null;
 }
 
+
+export interface HostQuestion {
+  id: bigint;
+  text: string;
+  options: string[];
+  status: number; // effective, same rule as Room.phase()
+  pot: bigint;
+  charged: number;
+  answerers: number;
+  revealed: number;
+  lockAt: number;
+  revealUntil: number;
+  disputeUntil: number;
+  outcome: bigint;
+  winners: number;
+}
+
+/** Every question in the room and the host's budget, read at one block. */
+export async function readHostQuestions(address: Address): Promise<{ budget: bigint; questions: HostQuestion[] }> {
+  return atOneBlock(async (blockNumber) => {
+    const r = (fn: string, args: readonly unknown[] = []) =>
+      publicClient.readContract({ address, abi: roomAbi, functionName: fn as never, args: args as never, blockNumber });
+    const [budget, count] = (await Promise.all([r("budget"), r("questionCount")])) as [bigint, bigint];
+    const ids = Array.from({ length: Number(count) }, (_, i) => BigInt(i));
+    const qs = await Promise.all(ids.map((id) => Promise.all([r("getQuestion", [id]), r("getWinners", [id])])));
+    const now = Math.floor(Date.now() / 1000);
+    return {
+      budget,
+      questions: qs.map(([raw, w], i) => {
+        const q = raw as { text: string; options: readonly string[]; pot: bigint; charged: number; answerers: number; revealed: number; lockAt: bigint; revealUntil: bigint; disputeUntil: bigint; status: number; outcome: `0x${string}` };
+        return {
+          id: ids[i]!,
+          text: q.text,
+          options: [...q.options],
+          status: q.status === Status.OPEN && now >= Number(q.lockAt) ? Status.LOCKED : q.status,
+          pot: q.pot,
+          charged: q.charged,
+          answerers: q.answerers,
+          revealed: q.revealed,
+          lockAt: Number(q.lockAt),
+          revealUntil: Number(q.revealUntil),
+          disputeUntil: Number(q.disputeUntil),
+          outcome: BigInt(q.outcome),
+          winners: (w as readonly Address[]).length,
+        };
+      }),
+    };
+  });
+}

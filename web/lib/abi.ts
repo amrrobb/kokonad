@@ -2,6 +2,8 @@ import { parseAbi } from "viem";
 
 export const factoryAbi = parseAbi([
   "function roomByCode(string code) view returns (address room)",
+  "function createRoom((address token, uint128 playPrice, uint128 startingDeposit, bool sponsored, bool hostPlays) cfg) returns (address room, string code)",
+  "event RoomCreated(address indexed room, address indexed host, string code, address token, uint128 playPrice, uint128 startingDeposit, bool sponsored, bool hostPlays)",
   "error UnknownCode()",
 ]);
 
@@ -36,6 +38,13 @@ export const roomAbi = parseAbi([
   "function wasCharged(uint256, address) view returns (bool)",
   "function commitAnswer(uint256 id, bytes32 commitHash)",
   "function revealAnswer(uint256 id, bytes32 answer, bytes32 salt)",
+  "function fundBudget(uint128 amount)",
+  "function commitQuestions(bytes32[] hashes)",
+  "function openQuestion(uint256 id, string text, string[] options, uint8 template, uint8 rule, uint8 n, bytes32 hostSalt, uint128 seed, uint32 timer)",
+  "function resolve(uint256 id, bytes32 outcome)",
+  "function settle(uint256 id)",
+  "function REVEAL_WINDOW() view returns (uint64)",
+  "event QuestionCommitted(uint256 indexed id, bytes32 commitHash)",
 ]);
 
 /** Room.Status, in contract order. */

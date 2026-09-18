@@ -1,4 +1,4 @@
-import type { Address, Hex } from "viem";
+import type { Address, Hex, TransactionReceipt } from "viem";
 import { forwarderAbi } from "./abi";
 import { CHAIN_ID, contracts } from "./deployments";
 import { publicClient } from "./room";
@@ -35,12 +35,16 @@ const PLAIN: Record<string, string> = {
   RoomFull: "This room is full.",
   InsufficientBudget: "The host hasn't added coins yet. Ask your host.",
   HostCannotJoin: "You're hosting this room.",
+  TooEarly: "Answers are still being opened. Try again in a moment.",
+  DisputeWindowOpen: "The result can still be disputed. Settle when the countdown ends.",
+  HashMismatch: "This question can't be opened from this tab.",
+  QuestionInFlight: "Finish the current question first.",
   rate_limited: "Too many tries at once. Wait a moment and try again.",
   daily_cap: "The game is busy right now. Try again in a little while.",
 };
 
 /** Signs `data` for `to` with the player's account and asks the relayer to submit it. Resolves once it is in. */
-export async function send(to: Address, data: Hex, gas = 500_000n): Promise<void> {
+export async function send(to: Address, data: Hex, gas = 500_000n): Promise<TransactionReceipt> {
   const account = getAccount();
   const nonce = await publicClient.readContract({ address: contracts.Forwarder, abi: forwarderAbi, functionName: "nonces", args: [account.address] });
   const deadline = Math.floor(Date.now() / 1000) + 600;
@@ -64,8 +68,7 @@ export async function send(to: Address, data: Hex, gas = 500_000n): Promise<void
   }
   const body = (await res.json().catch(() => ({}))) as { status?: string; txHash?: Hex; reason?: string; detail?: string };
   if (body.status === "relayed" && body.txHash) {
-    await publicClient.waitForTransactionReceipt({ hash: body.txHash });
-    return;
+    return publicClient.waitForTransactionReceipt({ hash: body.txHash });
   }
   const code = body.detail ?? body.reason ?? "unknown";
   throw new PlainError(PLAIN[code] ?? PLAIN[body.reason ?? ""] ?? "Something didn't go through. Your account is fine.", code);
