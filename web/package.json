@@ -1,0 +1,38 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@category-labs/mera": "0.2.0",
+    "@dynamic-labs/ethereum": "5.9.0",
+    "@dynamic-labs/ethereum-core": "5.9.0",
+    "@dynamic-labs/sdk-api-core": "0.32.0",
+    "@dynamic-labs/sdk-react-core": "5.9.0",
+    "@dynamic-labs/wagmi-connector": "5.9.0",
+    "@noble/hashes": "2.2.0",
+    "@tanstack/react-query": "^5.103.1",
+    "@wagmi/core": "^2.22.1",
+    "next": "16.3.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "viem": "^2.56.7",
+    "wagmi": "^2.19.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.33.1"
+}
