@@ -134,6 +134,12 @@ describe("topUpRoom", () => {
     ]);
   });
 
+  it("skips participants who left the room", async () => {
+    chain.left.add(BOB.toLowerCase());
+    await service().topUpRoom("ABCDEF");
+    expect(chain.sends.map((s) => s.to)).toEqual([ALICE, CAROL]);
+  });
+
   it("allows one round per room per interval", async () => {
     const s = service();
     expect((await s.topUpRoom("ABCDEF")).status).toBe("done");

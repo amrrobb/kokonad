@@ -42,8 +42,8 @@ pnpm start             # refuses to start until contracts are deployed to 10143
 ## Test
 
 ```bash
-pnpm test              # 52 unit tests, no chain needed
-pnpm test:integration  # 5 tests on a local anvil node with the real compiled contracts (needs Foundry)
+pnpm test              # 53 unit tests, no chain needed
+pnpm test:integration  # 6 tests on a local anvil node with the real compiled contracts (needs Foundry)
 pnpm test:all
 ```
 
@@ -51,4 +51,5 @@ The integration test deploys `KokoToken` and `RoomFactory`, creates a sponsored 
 real path. A brand-new account with zero balance cannot join. After `/drip` it can join on its own
 gas, and the `Joined` event is emitted. It is then refused a second drip. An unknown code gets 404
 from the real factory. Five concurrent drips all land. A participant drained below 0.02 MON is
-topped up before the next question while the others are untouched.
+topped up before the next question while the others are untouched, and one who
+left the room is not.

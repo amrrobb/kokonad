@@ -5,6 +5,8 @@ import type { Chain } from "../../src/chain.js";
 export class FakeChain implements Chain {
   readonly operator = getAddress("0x00000000000000000000000000000000000000aa");
   readonly rooms = new Map<string, { address: Address; participants: Address[] }>();
+  /** Lowercased addresses that called leave(); still in the room list, like the real contract. */
+  readonly left = new Set<string>();
   readonly balances = new Map<string, bigint>();
   readonly sends: Array<{ to: Address; wei: bigint }> = [];
   failNextSend = false;
@@ -26,8 +28,8 @@ export class FakeChain implements Chain {
     return this.rooms.get(code)?.address ?? null;
   }
 
-  async getParticipants(room: Address): Promise<Address[]> {
-    for (const r of this.rooms.values()) if (r.address === room) return r.participants;
+  async getActiveParticipants(room: Address): Promise<Address[]> {
+    for (const r of this.rooms.values()) if (r.address === room) return r.participants.filter((p) => !this.left.has(p.toLowerCase()));
     return [];
   }
 

@@ -84,7 +84,7 @@ export class DripService {
     const budgetWei = this.limits.dailyCapWei - this.ledger.sentSince(this.now() - DAY_MS);
     if (budgetWei <= 0n) return { status: "refused", reason: "daily_cap" };
 
-    const participants = await this.chain.getParticipants(room);
+    const participants = await this.chain.getActiveParticipants(room);
     const balances = await Promise.all(
       participants.map(async (address) => ({ address, balanceWei: await this.chain.getBalance(address) })),
     );

@@ -19,7 +19,8 @@ export interface Chain {
   getBalance(address: Address): Promise<bigint>;
   /** Room address for a join code, or null when the factory says the code does not exist. RPC failures throw. */
   resolveRoom(code: string): Promise<Address | null>;
-  getParticipants(room: Address): Promise<Address[]>;
+  /** Participants still in the room. The contract never removes leavers from its list, so this filters them. */
+  getActiveParticipants(room: Address): Promise<Address[]>;
   /** Sends native value and resolves once the transfer is mined successfully. */
   sendValue(to: Address, wei: bigint): Promise<Hex>;
 }
@@ -101,8 +102,12 @@ export class ViemChain implements Chain {
     }
   }
 
-  async getParticipants(room: Address): Promise<Address[]> {
-    return [...(await this.pub.readContract({ address: room, abi: roomAbi, functionName: "getParticipants" }))];
+  async getActiveParticipants(room: Address): Promise<Address[]> {
+    const all = await this.pub.readContract({ address: room, abi: roomAbi, functionName: "getParticipants" });
+    const left = await Promise.all(
+      all.map(async (p) => (await this.pub.readContract({ address: room, abi: roomAbi, functionName: "participants", args: [p] }))[1]),
+    );
+    return all.filter((_, i) => !left[i]);
   }
 
   async sendValue(to: Address, wei: bigint): Promise<Hex> {

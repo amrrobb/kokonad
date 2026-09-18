@@ -6,4 +6,7 @@ export const roomFactoryAbi = parseAbi([
   "error UnknownCode()",
 ]);
 
-export const roomAbi = parseAbi(["function getParticipants() view returns (address[])"]);
+export const roomAbi = parseAbi([
+  "function getParticipants() view returns (address[])",
+  "function participants(address) view returns (uint128 deposit, bool left, uint32 correctTotal)",
+]);

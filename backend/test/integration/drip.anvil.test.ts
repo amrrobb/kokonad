@@ -119,7 +119,7 @@ beforeAll(async () => {
   const deploymentsPath = join(dir, "31337.json");
   writeFileSync(deploymentsPath, JSON.stringify({ chainId: 31337, contracts: { KokoToken: tokenAddr, RoomFactory: factoryAddr } }));
   ledgerPath = join(dir, "ledger.json");
-  const config = loadConfig({ RPC_URL: rpcUrl, DRIP_OPERATOR_PRIVATE_KEY: OPERATOR_KEY, DEPLOYMENTS_PATH: deploymentsPath, DRIP_LEDGER_PATH: ledgerPath });
+  const config = loadConfig({ RPC_URL: rpcUrl, DRIP_OPERATOR_PRIVATE_KEY: OPERATOR_KEY, DEPLOYMENTS_PATH: deploymentsPath, DRIP_LEDGER_PATH: ledgerPath, ROOM_TOPUP_INTERVAL_MS: "0" });
 
   const viemChain = new ViemChain({ rpcUrl, chainId: config.deployments.chainId, operatorKey: config.operatorKey, factory: config.deployments.contracts.RoomFactory });
   expect(await viemChain.getChainId()).toBe(config.deployments.chainId);
@@ -172,6 +172,25 @@ describe("drip against real contracts on anvil", () => {
     const results = await Promise.all(addrs.map((address) => post("/drip", { address, code })));
     expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200, 200]);
     for (const a of addrs) expect(await pub.getBalance({ address: a })).toBe(parseEther("0.1"));
+  });
+
+  it("does not top up a participant who left the room", async () => {
+    const key = generatePrivateKey();
+    const addr = privateKeyToAccount(key).address;
+    await post("/drip", { address: addr, code });
+    await joinAs(key, "Citra");
+    const w = createWalletClient({ account: privateKeyToAccount(key), chain, transport: http(rpcUrl) });
+    await pub.waitForTransactionReceipt({ hash: await w.writeContract({ chain, address: room, abi: roomAbi, functionName: "leave", args: [] }) });
+    const bal = await pub.getBalance({ address: addr });
+    await pub.waitForTransactionReceipt({ hash: await w.sendTransaction({ chain, to: "0x000000000000000000000000000000000000dEaD", value: bal - parseEther("0.019") }) });
+    // Still listed by the contract, which never removes leavers from its participant list.
+    expect((await pub.readContract({ address: room, abi: roomAbi, functionName: "getParticipants" })) as Address[]).toContain(addr);
+
+    const r = await post("/topup", { code });
+    expect(r.status).toBe(200);
+    const body = (await r.json()) as { sent: Array<{ address: string }> };
+    expect(body.sent.map((s) => s.address)).not.toContain(addr);
+    expect(await pub.getBalance({ address: addr })).toBeLessThan(parseEther("0.02"));
   });
 
   it("tops up a participant who drained below 0.02 MON before the next question, and leaves others alone", async () => {
