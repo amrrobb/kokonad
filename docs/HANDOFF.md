@@ -82,3 +82,40 @@ Definition of done: **one question playable end-to-end on Monad testnet from two
 - Copy changes listed in `docs/CHANGES-2026-09-17.md` have **not** been applied to
   `docs/screens.html` / `docs/mockup-v2.html`. Apply them when those screens are first built.
 - Git repo is initialised but has **no commits**. First commit should be this docs baseline.
+
+---
+
+## Coordinator handoff (18 Sep 2026, 09:30 WIB)
+
+Written by the previous coordinator session (which lived in the ETHGlobal folder; this repo now
+has its own Orca project "Metropolis"). Nothing below is in the PRD; keep it until week 1 is done.
+
+### What happened
+- Repo created and pushed: **https://github.com/amrrobb/kokonad** (public, MIT, `main`, 1 commit).
+  Decision: stay on the personal account; transfer to an org later takes a minute and redirects.
+- First orchestration attempt (`run_a147345ce7e1`, tasks `task_903456d7ad6d` A and
+  `task_e585dc8882d3` B) died ~30 s after start, most likely an Orca restart ("Update installed ·
+  Restart to update"). Both dispatches were abandoned. **Nothing was written to disk; start clean.**
+- Reusable specs for A and B: `docs/orchestration/week1-tasks.md`. Run them as two supervised
+  Claude workers in the current worktree, disjoint ownership (`contracts/**` vs `web/**`).
+
+### Inputs the coordinator must get from the user
+- **Dynamic environment ID** (sandbox) from app.dynamic.xyz. Task B will `ask` for it; relay it,
+  never invent one. Put it in `web/.env.local` (gitignored), document the var in `web/.env.example`.
+- No deployer key exists yet. Task A must not deploy; `deployments/10143.json` stays placeholder.
+  When the user provides a testnet key it goes in `contracts/.env` only. Never paste keys in chat.
+
+### Guardrails learned this session
+- Do not resume or reuse any Claude session that carries Napier (employer) context in this repo;
+  the repo is public. Always start `claude` fresh here.
+- Workers must `git add <paths>`, never `-A`; `git pull --rebase origin main` before push.
+- Commits carry no AI attribution / Co-Authored-By lines (user rule overrides tool defaults).
+- Simulated wallets are labeled "simulated" everywhere; only real people count as testers.
+
+### Portal checklist (user-side, not done yet)
+- Create project "Kokonad" on hackathon.monad.xyz, Track 03, repo URL above.
+- Attach bounties: Dynamic, Mera PRF, Envio, Best Community Team (select **DevWeb3Jogja** in
+  profile), KIMI. CRE only if week 3 is safe.
+- Add `metropolis@hackathon.monad.xyz` as a collaborator.
+- Lock two tester dates with DevWeb3Jogja (week 2: 3–5 people; week 4: ≥ 8, recorded).
+- Registration closes 6 Oct; submissions open 22 Sep; deadline 14 Oct 10:59 WIB.
