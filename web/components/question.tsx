@@ -7,7 +7,9 @@ import { encodeFunctionData } from "viem";
 import { PlainError, send } from "@/lib/relay";
 import type { QuestionView, RoomView } from "@/lib/room";
 import { saltFor } from "@/lib/salt";
-import { PrimaryButton, coins } from "./ui";
+import Image from "next/image";
+import { flyCoins } from "./coins";
+import { Avatar, PrimaryButton, coins } from "./ui";
 
 const OPTION_COLORS = ["#7CC1F5", "#FF6B4A", "#F7C948", "#B9A2F0", "#A8E6CF", "#FFB08F"];
 const optionWord = (i: bigint) => numberToHex(i, { size: 32 });
@@ -176,41 +178,79 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   }
 
   // Result
-  if (q.status === Status.RESOLVED || q.status === Status.SETTLED) {
-    const right = q.options[Number(q.outcome)] ?? "";
-    const share = q.winners > 0 ? q.pot / BigInt(q.winners) : 0n;
-    const disputeLeft = q.disputeUntil - now;
-    if (q.me.correct) {
-      return (
-        <div className="flex flex-col gap-5">
-          <div className="rounded-[22px] border border-line bg-card p-5">
-            <p className="text-[13px] font-bold text-ink-3">Nice one!</p>
-            <p className="text-[56px] font-black leading-none tracking-[-.04em] text-green tabular-nums">+{coins(share)}</p>
-            <p className="mt-2 font-extrabold text-ink-2">
-              {right} was right. Pot of {coins(q.pot)} split {q.winners} way{q.winners === 1 ? "" : "s"}
-              {q.status === Status.SETTLED ? ", in your balance now." : ", arriving when the result is final."}
-            </p>
-          </div>
-          {q.status === Status.RESOLVED && disputeLeft > 0 && <p className="text-center text-[13px] font-bold text-ink-3">Result can be disputed for {disputeLeft}s</p>}
-        </div>
-      );
-    }
-    return (
-      <div className="flex flex-col gap-5">
-        <div className="rounded-[22px] border border-line bg-card p-5">
-          <p className="text-[13px] font-bold text-ink-3">Not this time</p>
-          <p className="text-[56px] font-black leading-none tracking-[-.04em] text-ink-3 tabular-nums">−{coins(view.playPrice)}</p>
-          <p className="mt-2 font-extrabold text-ink-2">
-            {q.me.committed ? `You picked ${q.options[Number(q.me.answer)] ?? "another answer"}.` : "You sat this one out."} {right} was right. Your play went to the pot.
-          </p>
-        </div>
-        {q.status === Status.RESOLVED && disputeLeft > 0 && <p className="text-center text-[13px] font-bold text-ink-3">Result can be disputed for {disputeLeft}s</p>}
-      </div>
-    );
-  }
+  if (q.status === Status.RESOLVED || q.status === Status.SETTLED) return <Result view={view} q={q} now={now} />;
 
   if (q.status === Status.VOIDED) return <Note title="This question was cancelled." body="Everyone's play went back to their balance." />;
   return null;
+}
+
+function Result({ view, q, now }: { view: RoomView; q: QuestionView; now: number }) {
+  const right = q.options[Number(q.outcome)] ?? "";
+  const share = q.winners > 0 ? q.pot / BigInt(q.winners) : 0n;
+  const disputeLeft = q.disputeUntil - now;
+  const settled = q.status === Status.SETTLED;
+  const won = q.me.correct;
+  const nameOf = (address: string) => view.people.find((p) => p.address.toLowerCase() === address.toLowerCase())?.name || "Someone";
+
+  // Coins fly once, at the moment this screen sees the pay-out land (result set → paid). A screen
+  // opened after the pay-out shows the final state without replaying it.
+  const amount = useRef<HTMLParagraphElement>(null);
+  const seenUnpaid = useRef(!settled);
+  useEffect(() => {
+    if (won && settled && seenUnpaid.current && amount.current) {
+      seenUnpaid.current = false;
+      flyCoins(amount.current);
+    }
+  }, [won, settled]);
+
+  return (
+    <div className="flex flex-1 flex-col gap-3">
+      <div className="relative overflow-hidden rounded-[22px] border border-line bg-card p-5 pr-[108px]">
+        <p className="text-[13px] font-bold text-ink-2">{won ? "Nice one!" : "Not this time"}</p>
+        <p ref={amount} data-testid="result-amount" className={`text-[56px] font-black leading-none tracking-[-.04em] tabular-nums ${won ? "text-green" : "text-ink-3"}`}>
+          {won ? `+${coins(share)}` : `−${coins(view.playPrice)}`}
+        </p>
+        <p className="mt-2 font-extrabold text-ink-2">
+          {won ? (
+            <>
+              {right} was right. Pot of {coins(q.pot)} split {q.winners} way{q.winners === 1 ? "" : "s"}
+              {settled ? ", in your balance now." : ", arriving when the result is final."}
+            </>
+          ) : (
+            <>
+              {q.me.committed ? `You picked ${q.options[Number(q.me.answer)] ?? "another answer"}.` : "You sat this one out."} {right} was right. Your play went to the pot.
+            </>
+          )}
+        </p>
+        <Image src="/mascot/mascot-surprised.png" alt="" width={96} height={96} className="absolute right-3 top-3 h-[88px] w-[88px] object-contain" />
+      </div>
+
+      {q.picks.length > 0 && (
+        <ul className="flex flex-col gap-1.5" data-testid="result-rows">
+          {q.picks.map((p) => (
+            <li
+              key={p.address}
+              className={`flex items-center gap-2 rounded-[14px] border px-3 py-2 text-[14px] font-extrabold ${p.won ? "border-[#F5DFA0] bg-[#FFF4D6]" : "border-line bg-surface opacity-55"} ${p.me ? "outline outline-2 outline-coral" : ""}`}
+            >
+              <Avatar address={p.address} name={nameOf(p.address)} />
+              <span className="min-w-0 flex-1 truncate">
+                {nameOf(p.address)}
+                {p.me ? " (you)" : ""}
+              </span>
+              <span className={`shrink-0 font-bold ${p.won ? "text-ink-2" : "text-ink-3"}`}>{q.options[p.option] ?? ""}</span>
+              <span className="min-w-[40px] shrink-0 text-right font-black text-green tabular-nums">{p.won ? `+${coins(share)}` : ""}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {q.status === Status.RESOLVED && disputeLeft > 0 && (
+        <p className="mt-auto pt-3 text-[13px] font-bold text-ink-2">
+          Result can be disputed for <b className="tabular-nums">{disputeLeft}s</b>
+        </p>
+      )}
+    </div>
+  );
 }
 
 /** Which option this tab sealed, per question. Memory only: the salt fallback is the one stored secret. */

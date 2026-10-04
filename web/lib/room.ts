@@ -97,6 +97,11 @@ export interface QuestionView {
   revealed: number;
   me: { charged: boolean; hasPlay: boolean; committed: boolean; revealed: boolean; answer: bigint; correct: boolean };
   winners: number;
+  /**
+   * Who answered what, once the result is set (empty before: answers are not shown while a question
+   * can still change). Winners first, then in the order answers were opened. Same block as the rest.
+   */
+  picks: Array<{ address: Address; option: number; won: boolean; me: boolean }>;
 }
 
 /** The latest question the host has opened, from the chain; null while every question is still a sealed draft. */
@@ -121,6 +126,16 @@ async function readLatestQuestionAt(address: Address, me: Address, blockNumber: 
     // Same rule as Room.phase(), applied to this snapshot rather than a separate call.
     const phase = q.status === Status.OPEN && Math.floor(Date.now() / 1000) >= Number(q.lockAt) ? Status.LOCKED : q.status;
     const ans = a as { commitHash: `0x${string}`; answer: `0x${string}`; revealed: boolean };
+    const winnerList = winners as readonly Address[];
+    let picks: QuestionView["picks"] = [];
+    if (q.status === Status.RESOLVED || q.status === Status.SETTLED) {
+      const revealers = (await r("getRevealers", [id])) as readonly Address[];
+      const answers = (await Promise.all(revealers.map((p) => r("getAnswer", [id, p])))) as Array<{ answer: `0x${string}` }>;
+      const won = new Set(winnerList.map((w) => w.toLowerCase()));
+      picks = revealers
+        .map((address, i) => ({ address, option: Number(BigInt(answers[i]!.answer)), won: won.has(address.toLowerCase()), me: address.toLowerCase() === me.toLowerCase() }))
+        .sort((x, y) => Number(y.won) - Number(x.won));
+    }
     return {
       id,
       text: q.text,
@@ -141,7 +156,8 @@ async function readLatestQuestionAt(address: Address, me: Address, blockNumber: 
         answer: BigInt(ans.answer),
         correct: correct as boolean,
       },
-      winners: (winners as readonly Address[]).length,
+      winners: winnerList.length,
+      picks,
     };
   }
   return null;

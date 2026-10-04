@@ -33,6 +33,7 @@ export const roomAbi = parseAbi([
   "function getQuestion(uint256 id) view returns ((bytes32 commitHash, string text, string[] options, uint8 template, uint8 rule, uint8 n, uint128 hostSeed, uint128 pot, uint32 charged, uint64 openAt, uint64 lockAt, uint64 revealUntil, uint64 disputeUntil, uint8 status, bytes32 outcome, address resolver, uint32 answerers, uint32 revealed, uint32 disputes))",
   "function getAnswer(uint256 id, address participant) view returns ((bytes32 commitHash, bytes32 answer, uint64 revealBlock, uint32 revealIndex, bool revealed, bool claimed))",
   "function getWinners(uint256 id) view returns (address[])",
+  "function getRevealers(uint256 id) view returns (address[])",
   "function hasAnswerToken(uint256, address) view returns (bool)",
   "function hasCorrectToken(uint256, address) view returns (bool)",
   "function wasCharged(uint256, address) view returns (bool)",

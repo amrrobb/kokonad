@@ -46,8 +46,8 @@ export interface Tab {
 const OUTSIDE_STUB = JSON.stringify({ groups: {}, wallets: {} });
 const isLocal = (url: string) => ["localhost", "127.0.0.1"].includes(new URL(url).hostname);
 
-export async function openTab(browser: Browser, label: string, width: number, height: number): Promise<Tab> {
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
+export async function openTab(browser: Browser, label: string, width: number, height: number, opts: { reducedMotion?: boolean } = {}): Promise<Tab> {
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, reducedMotion: opts.reducedMotion ? "reduce" : "no-preference" });
   const errors: string[] = [];
   const outside: string[] = [];
   // Hermetic: nothing a page asks for may reach the network. Requests that try are recorded and
@@ -69,8 +69,8 @@ export async function openTab(browser: Browser, label: string, width: number, he
 }
 
 /** A participant: opens /r/<code>, types a name, joins. The app creates the account on its own. */
-export async function joinAs(browser: Browser, code: string, name: string, width = 360, height = 780): Promise<Tab> {
-  const tab = await openTab(browser, name, width, height);
+export async function joinAs(browser: Browser, code: string, name: string, width = 360, height = 780, opts: { reducedMotion?: boolean } = {}): Promise<Tab> {
+  const tab = await openTab(browser, name, width, height, opts);
   await tab.page.goto(`/r/${code}`);
   await tab.page.getByPlaceholder("Your name").fill(name);
   const join = tab.page.getByRole("button", { name: "Join room" });
@@ -135,3 +135,8 @@ export async function pickAndLock(tab: Tab, option: string): Promise<void> {
   await lock.click();
   await expect(tab.page.getByRole("heading", { name: "Your answer is sealed" })).toBeVisible();
 }
+
+/** The flying coins of the win animation, while they are in the air. */
+export const flyingCoins = (page: Page) => page.locator("[data-coin-fly]");
+/** Rows of the result list: one per person whose answer was opened. */
+export const resultRows = (page: Page) => page.getByTestId("result-rows").locator("li");

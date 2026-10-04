@@ -10,7 +10,7 @@
  */
 import { expect, test } from "@playwright/test";
 import type { Address } from "viem";
-import { COIN, Status, balancePill, expectPlainLanguage, joinAs, ledger, openTab, pickAndLock, pub, roomAbi, roomAddress, sealAndOpen, shot, stack, tokenAbi, type Tab } from "./helpers";
+import { COIN, Status, balancePill, flyingCoins, resultRows, expectPlainLanguage, joinAs, ledger, openTab, pickAndLock, pub, roomAbi, roomAddress, sealAndOpen, shot, stack, tokenAbi, type Tab } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -94,7 +94,7 @@ test("two accounts join the same room and start level", async ({ browser }) => {
   room = await roomAddress(code);
 
   sari = await joinAs(browser, code, "Sari", 360, 780);
-  bimo = await joinAs(browser, code, "Bimo", 360, 780);
+  bimo = await joinAs(browser, code, "Bimo", 360, 780, { reducedMotion: true }); // Bimo's phone asks for less motion
   for (const t of [sari, bimo]) await expect(balancePill(t.page)).toHaveText("20", { timeout: 60_000 });
 
   const l = await ledger(room);
@@ -107,7 +107,8 @@ test("round 1: one is right, one is wrong, winner takes the pot", async ({}, inf
   await playRound(1, "Round one: heads or tails?", { sari: "Heads", bimo: "Tails" }, "Heads");
 
   await expect(sari.page.getByText("Nice one!")).toBeVisible();
-  await expect(sari.page.getByText("+2", { exact: true })).toBeVisible();
+  await expect(sari.page.getByTestId("result-amount")).toHaveText("+2");
+  await expect(resultRows(bimo.page)).toHaveText([/^SASariHeads\+2$/, /^BIBimo \(you\)Tails$/]);
   await expect(sari.page.getByText("Heads was right. Pot of 2 split 1 way")).toBeVisible();
   await expect(bimo.page.getByText("Not this time")).toBeVisible();
   await expect(bimo.page.getByText("You picked Tails. Heads was right.")).toBeVisible();
@@ -127,7 +128,7 @@ test("round 2: both are right, the pot is split evenly", async ({}, info) => {
 
   for (const t of [sari, bimo]) {
     await expect(t.page.getByText("Nice one!")).toBeVisible();
-    await expect(t.page.getByText("+1", { exact: true })).toBeVisible();
+    await expect(t.page.getByTestId("result-amount")).toHaveText("+1");
     await expect(t.page.getByText("Tails was right. Pot of 2 split 2 ways")).toBeVisible();
   }
   await shot(bimo, info, "duel-2-split");
@@ -136,7 +137,14 @@ test("round 2: both are right, the pot is split evenly", async ({}, info) => {
   const l = await ledger(room);
   expect([...winners].sort()).toEqual([l.Sari!.address, l.Bimo!.address].sort());
 
+  // Both won. Sari's coins fly; Bimo asked for reduced motion, so his never do (his balance still updates).
+  let bimoCoins = 0;
+  const watch = setInterval(() => void flyingCoins(bimo.page).count().then((n) => (bimoCoins = Math.max(bimoCoins, n))).catch(() => {}), 100);
+  const sariFlew = expect(flyingCoins(sari.page)).toHaveCount(10, { timeout: 120_000 });
   await payOut("Round two: heads or tails?", "Paid out to 2 people.", { question: "Round three: heads or tails?" });
+  await sariFlew;
+  clearInterval(watch);
+  expect(bimoCoins, "coins seen flying on the reduced-motion phone").toBe(0);
   await expect(balancePill(sari.page)).toHaveText("21"); // 18 + 2 + 1
   await expect(balancePill(bimo.page)).toHaveText("19"); // 18 + 1
 });

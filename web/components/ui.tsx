@@ -29,7 +29,7 @@ export function RoomHeader({ code, balance }: { code: string; balance?: bigint }
       <span className="text-[13px] font-extrabold text-ink-2">
         Room <b className="tracking-[.12em] text-ink">{code}</b>
       </span>
-      <span className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[14px] font-black tabular-nums">
+      <span data-balance-pill className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[14px] font-black tabular-nums">
         <span className="inline-block h-3.5 w-3.5 rounded-full bg-gold shadow-[inset_0_-2px_0_var(--color-gold-d)]" />
         {balance === undefined ? "0" : coins(balance)}
       </span>

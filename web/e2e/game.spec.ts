@@ -6,7 +6,7 @@
  * Every money claim on a screen is checked against the chain read directly (helpers.ledger).
  */
 import { expect, test } from "@playwright/test";
-import { COIN, Status, balancePill, expectFits, expectPlainLanguage, joinAs, ledger, openTab, pickAndLock, pub, roomAbi, roomAddress, sealAndOpen, shot, stack, tokenAbi, type Tab } from "./helpers";
+import { COIN, Status, balancePill, flyingCoins, resultRows, expectFits, expectPlainLanguage, joinAs, ledger, openTab, pickAndLock, pub, roomAbi, roomAddress, sealAndOpen, shot, stack, tokenAbi, type Tab } from "./helpers";
 import type { Address } from "viem";
 
 test.describe.configure({ mode: "serial" });
@@ -118,11 +118,20 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await sate.click();
 
   await expect(eka.page.getByText("Nice one!")).toBeVisible();
-  await expect(eka.page.getByText("+3", { exact: true })).toBeVisible();
+  await expect(eka.page.getByTestId("result-amount")).toHaveText("+3");
   await expect(eka.page.getByText("Team Sate was right. Pot of 3 split 1 way, arriving when the result is final.")).toBeVisible();
   await expect(fajar.page.getByText("Not this time")).toBeVisible();
   await expect(fajar.page.getByText("You picked Team Kopi. Team Sate was right. Your play went to the pot.")).toBeVisible();
   await expect(gita.page.getByText("You sat this one out. Team Sate was right. Your play went to the pot.")).toBeVisible();
+  await expect(fajar.page.getByTestId("result-amount")).toHaveText("−1");
+  // Everyone sees the same list: winners first with what they won, then the rest; the reader is marked.
+  // Gita never answered, so she is not in it.
+  await expect(resultRows(eka.page)).toHaveText([/^EKEka \(you\)Team Sate\+3$/, /^FAFajarTeam Kopi$/]);
+  await expect(resultRows(fajar.page)).toHaveText([/^EKEkaTeam Sate\+3$/, /^FAFajar \(you\)Team Kopi$/]);
+  await expect(resultRows(gita.page)).toHaveText([/^EKEkaTeam Sate\+3$/, /^FAFajarTeam Kopi$/]);
+  await expectFits(eka.page, "result 360");
+  // Nothing flies yet: the coins have not moved on the chain.
+  await expect(flyingCoins(eka.page)).toHaveCount(0);
   for (const t of [eka, fajar, gita]) await expectPlainLanguage(t.page, `${t.label} result`);
   await shot(eka, info, "5-win");
   await shot(fajar, info, "5-lose");
@@ -142,6 +151,12 @@ test("question 1: answers stay sealed, open on their own, and the right person i
 
   await expect(payOut).toBeEnabled({ timeout: 90_000 });
   await payOut.click();
+  // The one animated moment: ten coins fly to the winner's balance when the pay-out lands. Nobody else gets it.
+  await expect(flyingCoins(eka.page)).toHaveCount(10);
+  await eka.page.waitForTimeout(350);
+  await shot(eka, info, "6-coins-flying");
+  expect(await flyingCoins(fajar.page).count()).toBe(0);
+  await expect(flyingCoins(eka.page)).toHaveCount(0); // and they clean up after themselves
   await expect(host.page.getByText("Paid out to 1 person.")).toBeVisible();
   await expect(eka.page.getByText("in your balance now.")).toBeVisible();
   await expect(balancePill(eka.page)).toHaveText("22");
