@@ -22,9 +22,12 @@ import {
   decodeEventLog,
   defineChain,
   encodeFunctionData,
+  getAbiItem,
   http,
   parseEther,
+  toFunctionSelector,
   type Abi,
+  type AbiFunction,
   type Address,
   type Chain,
   type Hex,
@@ -33,9 +36,9 @@ import {
 } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { ViemChain } from "../../src/chain.js";
-import { loadConfig } from "../../src/config.js";
+import { loadConfig, type RelayConfig } from "../../src/config.js";
 import { Ledger } from "../../src/ledger.js";
-import { RelayService } from "../../src/relay.js";
+import { RelayService, ROOM_GROWTH_SELECTORS } from "../../src/relay.js";
 import { signForwardRequest } from "../../src/request.js";
 import { createRelayServer } from "../../src/server.js";
 
@@ -61,6 +64,8 @@ let tokenAddr: Address;
 let factoryAddr: Address;
 let room: Address;
 let code: string;
+let config: RelayConfig;
+let viemChain: ViemChain;
 const roomAbi = () => artifact("Room.sol", "Room").abi;
 const tokenAbi = () => artifact("KokoToken.sol", "KokoToken").abi;
 const factoryAbi = () => artifact("RoomFactory.sol", "RoomFactory").abi;
@@ -118,8 +123,8 @@ beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), "kokonad-int-"));
   const deploymentsPath = join(dir, "31337.json");
   writeFileSync(deploymentsPath, JSON.stringify({ chainId: 31337, contracts: { KokoToken: tokenAddr, RoomFactory: factoryAddr, Forwarder: forwarder } }));
-  const config = loadConfig({ RPC_URL: rpcUrl, RELAYER_PRIVATE_KEY: RELAYER_KEY, DEPLOYMENTS_PATH: deploymentsPath, RELAY_LEDGER_PATH: join(dir, "ledger.json") });
-  const viemChain = new ViemChain({ rpcUrl, chainId: config.deployments.chainId, operatorKey: config.operatorKey, contracts: config.deployments.contracts });
+  config = loadConfig({ RPC_URL: rpcUrl, RELAYER_PRIVATE_KEY: RELAYER_KEY, DEPLOYMENTS_PATH: deploymentsPath, RELAY_LEDGER_PATH: join(dir, "ledger.json") });
+  viemChain = new ViemChain({ rpcUrl, chainId: config.deployments.chainId, operatorKey: config.operatorKey, contracts: config.deployments.contracts });
   server = createRelayServer(new RelayService(viemChain, new Ledger(config.ledgerPath), config));
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -188,5 +193,27 @@ describe("relay against real contracts on anvil", () => {
     expect(r1.status).toBe(403);
     const r2 = await post(await signed(p, "0x000000000000000000000000000000000000dEaD", "0x"));
     expect(r2.status).toBe(403);
+  });
+  it("the room cap guards exactly the compiled contract's join and openQuestion", () => {
+    // Selectors come from the real Room ABI, not from signatures typed into the relayer.
+    const real = ["join", "openQuestion"].map((name) => toFunctionSelector(getAbiItem({ abi: roomAbi(), name }) as AbiFunction));
+    expect([...ROOM_GROWTH_SELECTORS].sort()).toEqual(real.sort());
+  });
+
+  it("a room past its gas cap takes no new player, but its host can still close it and get the budget back", async () => {
+    // Same chain and the same ledger file (so this room's real spending is on record), with a cap already exceeded.
+    const capped = new RelayService(viemChain, new Ledger(config.ledgerPath), { ...config, roomDailyCapWei: 1n });
+    const late = privateKeyToAccount(generatePrivateKey());
+    const joinReq = (await signed(late, room, encodeFunctionData({ abi: roomAbi(), functionName: "join", args: [code, "Late"] }))).request;
+    expect(await capped.relay(RelayService.parse({ request: joinReq }) as never)).toEqual({ status: "refused", reason: "room_cap" });
+    expect(await pub.readContract({ address: room, abi: roomAbi(), functionName: "joined", args: [late.address] })).toBe(false);
+    // Proof the refusal was the cap and nothing else: the uncapped service relays the very same request.
+    expect((await post({ request: joinReq })).status).toBe(200);
+
+    const closeReq = (await signed(host, room, encodeFunctionData({ abi: roomAbi(), functionName: "closeRoom" }), 3_000_000n)).request;
+    const closed = await capped.relay(RelayService.parse({ request: closeReq }) as never);
+    expect(closed.status).toBe("relayed");
+    await pub.waitForTransactionReceipt({ hash: (closed as { txHash: Hex }).txHash });
+    expect(await pub.readContract({ address: room, abi: roomAbi(), functionName: "closed" })).toBe(true);
   });
 });

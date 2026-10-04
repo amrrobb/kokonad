@@ -54,6 +54,14 @@ export class Ledger {
     return total;
   }
 
+  /** Gas paid for calls to one target (a room) at or after `sinceMs`. */
+  spentOnSince(target: string, sinceMs: number): bigint {
+    const t = target.toLowerCase();
+    let total = 0n;
+    for (const s of this.data.spends) if (s.at >= sinceMs && s.target === t) total += BigInt(s.wei);
+    return total;
+  }
+
   record(entry: SpendEntry): void {
     const next: LedgerFile = {
       version: 2,

@@ -13,6 +13,7 @@ const REFUSAL_STATUS: Record<string, number> = {
   call_would_revert: 422,
   rate_limited: 429,
   daily_cap: 503,
+  room_cap: 503,
 };
 
 function json(res: ServerResponse, status: number, body: unknown): void {

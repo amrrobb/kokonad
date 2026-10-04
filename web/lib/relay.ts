@@ -41,6 +41,7 @@ const PLAIN: Record<string, string> = {
   QuestionInFlight: "Finish the current question first.",
   rate_limited: "Too many tries at once. Wait a moment and try again.",
   daily_cap: "The game is busy right now. Try again in a little while.",
+  room_cap: "This room has reached its limit for today. Ask your host.",
 };
 
 /** Signs `data` for `to` with the player's account and asks the relayer to submit it. Resolves once it is in. */

@@ -19,6 +19,12 @@ export interface RelayConfig {
   port: number;
   /** Hard ceiling on MON the relayer spends on gas per rolling 24 h. */
   dailyCapWei: bigint;
+  /**
+   * Ceiling on MON spent on any one room per rolling 24 h. Past it the room can finish what is in
+   * flight (answers open, results, pay-outs, closing) but cannot open a question or take a new player.
+   * Must sit above a real session: 8 people x 8 questions measured about 3.6 MON on 3 Oct.
+   */
+  roomDailyCapWei: bigint;
   /** Largest gas a single signed request may ask the forwarder to pass on (creating a room is the heaviest call). */
   maxRequestGas: bigint;
   /** Relayed requests per signer per minute. */
@@ -79,6 +85,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
     ledgerPath: env.RELAY_LEDGER_PATH ?? resolve(here, "../.data/relay-ledger.json"),
     port: Number(env.PORT ?? 8787),
     dailyCapWei: parseEther(env.DAILY_CAP_MON ?? "5"),
+    roomDailyCapWei: parseEther(env.ROOM_DAILY_CAP_MON ?? "4"),
     maxRequestGas: BigInt(env.MAX_REQUEST_GAS ?? "8000000"),
     signerRequestsPerMinute: Number(env.SIGNER_REQUESTS_PER_MINUTE ?? 30),
     tokenCallsPerSignerPerHour: Number(env.TOKEN_CALLS_PER_SIGNER_PER_HOUR ?? 4),

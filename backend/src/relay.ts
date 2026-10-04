@@ -1,4 +1,4 @@
-import { getAddress, isAddress, isHex, type Address, type Hex } from "viem";
+import { getAddress, isAddress, isHex, toFunctionSelector, type Address, type Hex } from "viem";
 import type { Chain, ForwardRequest } from "./chain.js";
 import type { RelayConfig } from "./config.js";
 import type { Ledger } from "./ledger.js";
@@ -9,6 +9,16 @@ const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const MAX_DATA_BYTES = 8 * 1024;
 const MAX_DEADLINE_AHEAD_S = 24 * 60 * 60;
+
+/**
+ * Room calls that start new spending: a new player, a new question. These are what a room loses when
+ * it reaches its gas cap. Everything that finishes a question or returns coins is never blocked, so a
+ * cap can stop a room from growing but can never strand anyone's coins.
+ */
+export const ROOM_GROWTH_SELECTORS: ReadonlySet<string> = new Set([
+  toFunctionSelector("function join(string,string)"),
+  toFunctionSelector("function openQuestion(uint256,string,string[],uint8,uint8,uint8,bytes32,uint128,uint32)"),
+]);
 
 export type RelayResult =
   | { status: "relayed"; txHash: Hex }
@@ -23,10 +33,11 @@ export type RefusalReason =
   | "bad_signature"
   | "call_would_revert"
   | "rate_limited"
-  | "daily_cap";
+  | "daily_cap"
+  | "room_cap";
 
 type Limits = Pick<RelayConfig, "dailyCapWei" | "maxRequestGas" | "signerRequestsPerMinute"> &
-  Partial<Pick<RelayConfig, "tokenCallsPerSignerPerHour" | "tokenCallsPerHour">>;
+  Partial<Pick<RelayConfig, "tokenCallsPerSignerPerHour" | "tokenCallsPerHour" | "roomDailyCapWei">>;
 
 /**
  * Pays gas for players. It never decides anything about money or results: it only submits requests the
@@ -81,6 +92,16 @@ export class RelayService {
     return this.chain.isFactoryRoom(to);
   }
 
+  /** True when the request would grow a room that has already used its gas for the day. */
+  private overRoomCap(req: ForwardRequest): boolean {
+    const cap = this.limits.roomDailyCapWei;
+    if (cap === undefined) return false;
+    const to = req.to.toLowerCase();
+    if (to === this.chain.token.toLowerCase() || to === this.chain.factory.toLowerCase()) return false;
+    if (!ROOM_GROWTH_SELECTORS.has(req.data.slice(0, 10).toLowerCase())) return false;
+    return this.ledger.spentOnSince(to, this.now() - DAY_MS) >= cap;
+  }
+
   async relay(req: ForwardRequest): Promise<RelayResult> {
     // Cheap, local checks first.
     if (req.value !== 0n) return { status: "refused", reason: "value_not_allowed" };
@@ -97,6 +118,7 @@ export class RelayService {
 
     // Chain checks. RPC failures throw and surface as 502, never as a verdict on the request.
     if (!(await this.targetAllowed(req.to))) return { status: "refused", reason: "target_not_allowed" };
+    if (this.overRoomCap(req)) return { status: "refused", reason: "room_cap" };
     if (!(await this.chain.verify(req))) return { status: "refused", reason: "bad_signature" };
     const sim = await this.chain.simulate(req);
     if (!sim.ok) return { status: "refused", reason: "call_would_revert", detail: sim.reason };

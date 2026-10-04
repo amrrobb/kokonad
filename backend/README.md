@@ -24,6 +24,11 @@ the relayer. A player's account only ever signs; it needs no MON at all.
 5. **Limits** allow 30 requests per signer per minute and 5 MON of gas per rolling 24 hours. Token
    calls get tighter limits, 4 per signer per hour and 30 per hour overall, because `mint` is open to
    anyone and would otherwise be a faucet paid in the relayer's gas.
+   Each room also has its own ceiling, 4 MON per rolling 24 hours (`ROOM_DAILY_CAP_MON`). Past it the
+   relayer refuses only the two calls that start new spending, `join` and `openQuestion`, with
+   `room_cap`. Reveals, results, pay-outs, leaving and closing the room are always relayed, so a cap can
+   stop a room from growing but can never strand anyone's coins. Keep it above a real session: 8 people
+   and 8 questions measured about 3.6 MON on 3 Oct.
 
 The relayer can delay a request. It cannot forge or alter one, and it never decides money or results.
 
