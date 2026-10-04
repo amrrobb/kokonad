@@ -130,7 +130,9 @@ export default function RoomPage() {
         <Screen>
           <RoomHeader code={code} balance={balance} />
           <div className="mt-6 flex flex-1 flex-col">
-            <QuestionScreen room={room as Address} view={view} q={questionQ.data} onChange={refresh} />
+            {/* Keyed by question: a new question starts from a clean screen. Without the key the previous
+                question's pick stayed selected and its "already opened my answer" flag blocked every later reveal. */}
+            <QuestionScreen key={String(questionQ.data.id)} room={room as Address} view={view} q={questionQ.data} onChange={refresh} />
           </div>
         </Screen>
       );
