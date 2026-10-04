@@ -1,12 +1,14 @@
 "use client";
 
-import { DynamicContextProvider, mergeNetworks } from "@dynamic-labs/sdk-react-core";
-import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import { DynamicContextProvider, mergeNetworks, useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { EthereumWalletConnectors, isEthereumWallet } from "@dynamic-labs/ethereum";
 import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConfig, http, WagmiProvider } from "wagmi";
-import { useState, type ReactNode } from "react";
-import { monadTestnet, monadTestnetForDynamic } from "@/lib/chain";
+import { useEffect, useState, type ReactNode } from "react";
+import type { Address } from "viem";
+import { MONAD_TESTNET_ID, monadTestnet, monadTestnetForDynamic } from "@/lib/chain";
+import { setSignedInSigner } from "@/lib/signer";
 
 const wagmiConfig = createConfig({
   chains: [monadTestnet],
@@ -25,6 +27,29 @@ export function MissingEnvironmentNotice() {
       </p>
     </main>
   );
+}
+
+/**
+ * Hands the signed-in person's embedded account to lib/signer, and takes it away on sign-out.
+ * NOT YET RUN AGAINST A LIVE ENVIRONMENT (no environment ID as of 4 Oct): see docs/spikes/dynamic-mera.md.
+ */
+function SignerBridge() {
+  const { primaryWallet } = useDynamicContext();
+  useEffect(() => {
+    if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
+      setSignedInSigner(null);
+      return;
+    }
+    const wallet = primaryWallet;
+    setSignedInSigner({
+      address: wallet.address as Address,
+      signTypedData: async (data) => {
+        const client = await wallet.getWalletClient(String(MONAD_TESTNET_ID));
+        return client.signTypedData({ ...data, account: client.account } as Parameters<typeof client.signTypedData>[0]);
+      },
+    });
+  }, [primaryWallet]);
+  return null;
 }
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -54,7 +79,10 @@ export function Providers({ children }: { children: ReactNode }) {
     >
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
-          <DynamicWagmiConnector>{children}</DynamicWagmiConnector>
+          <DynamicWagmiConnector>
+            <SignerBridge />
+            {children}
+          </DynamicWagmiConnector>
         </QueryClientProvider>
       </WagmiProvider>
     </DynamicContextProvider>

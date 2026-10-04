@@ -2,7 +2,7 @@ import { bytesToHex, decodeEventLog, encodeAbiParameters, encodeFunctionData, ke
 import { factoryAbi, roomAbi, tokenAbi } from "./abi";
 import { contracts } from "./deployments";
 import { PlainError, send } from "./relay";
-import { getAccount } from "./signer";
+import { getSigner } from "./signer";
 
 /**
  * Host actions. Same seam as players: the host's account signs, the relayer pays.
@@ -23,7 +23,8 @@ export function draft(room: Address, id: bigint): Draft | undefined {
 }
 
 export async function createRoom(opts: { people: number; deposit: number; play: number }) {
-  const me = getAccount().address;
+  const me = getSigner()?.address;
+  if (!me) throw new PlainError("Sign in first, then try again.", "signed_out");
   const cfg = { token: contracts.KokoToken, playPrice: parseEther(String(opts.play)), startingDeposit: parseEther(String(opts.deposit)), sponsored: true, hostPlays: false };
   const receipt = await send(contracts.RoomFactory, encodeFunctionData({ abi: factoryAbi, functionName: "createRoom", args: [cfg] }), 6_000_000n);
   const ev = receipt.logs

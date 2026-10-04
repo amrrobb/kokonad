@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createRoom } from "@/lib/host";
 import { PlainError } from "@/lib/relay";
+import { useSigner } from "@/lib/signer";
+import { SignIn } from "@/components/sign-in";
 import { PrimaryButton } from "@/components/ui";
 
 function Field(props: { label: string; value: number; onChange: (n: number) => void; min: number; max: number; hint: string }) {
@@ -24,6 +26,12 @@ function Field(props: { label: string; value: number; onChange: (n: number) => v
 }
 
 export default function NewRoom() {
+  const signer = useSigner();
+  if (!signer) return <SignIn title="Start a room" body="Continue so the room stays yours, on any device." />;
+  return <NewRoomForm />;
+}
+
+function NewRoomForm() {
   const router = useRouter();
   const [people, setPeople] = useState(10);
   const [deposit, setDeposit] = useState(20);

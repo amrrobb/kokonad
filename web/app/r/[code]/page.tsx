@@ -9,7 +9,8 @@ import { roomAbi, tokenAbi } from "@/lib/abi";
 import { contracts } from "@/lib/deployments";
 import { PlainError, send } from "@/lib/relay";
 import { findRoom, readLatestQuestion, readRoom } from "@/lib/room";
-import { getAccount } from "@/lib/signer";
+import { useSigner } from "@/lib/signer";
+import { SignIn } from "@/components/sign-in";
 import { Avatar, PrimaryButton, RoomHeader, Screen, coins } from "@/components/ui";
 import { QuestionScreen } from "@/components/question";
 
@@ -30,7 +31,13 @@ function savedName(): string {
 
 export default function RoomPage() {
   const code = String(useParams<{ code: string }>().code).toUpperCase();
-  const me = getAccount().address;
+  const signer = useSigner();
+  if (!signer) return <SignIn code={code} title="Almost in." body="Continue to get your account and your coins." />;
+  // Keyed by account: signing in as someone else starts this screen over.
+  return <Room key={signer.address} code={code} me={signer.address} />;
+}
+
+function Room({ code, me }: { code: string; me: Address }) {
   // The first render is "Finding room…", so reading the saved name here cannot cause a hydration mismatch.
   const [name, setName] = useState(() => (typeof window === "undefined" ? "" : savedName()));
   const [done, setDone] = useState<Step[]>([]);

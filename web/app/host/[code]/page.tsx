@@ -8,7 +8,8 @@ import { Status } from "@/lib/abi";
 import { draft, openQuestion, resolveQuestion, sealQuestion, settleQuestion } from "@/lib/host";
 import { PlainError } from "@/lib/relay";
 import { findRoom, readHostQuestions, readRoom, type HostQuestion } from "@/lib/room";
-import { getAccount } from "@/lib/signer";
+import { useSigner } from "@/lib/signer";
+import { SignIn } from "@/components/sign-in";
 import { Avatar, coins } from "@/components/ui";
 
 const OPTION_COLORS = ["#7CC1F5", "#FF6B4A", "#F7C948", "#B9A2F0", "#A8E6CF", "#FFB08F"];
@@ -99,7 +100,12 @@ function QuestionCard({ room, q, now, anyLive, act }: { room: Address; q: HostQu
 
 export default function HostRoom() {
   const code = String(useParams<{ code: string }>().code).toUpperCase();
-  const me = getAccount().address;
+  const signer = useSigner();
+  if (!signer) return <SignIn code={code} title="Your room is waiting." body="Continue with the account that created it." />;
+  return <HostRoomFor key={signer.address} code={code} me={signer.address} />;
+}
+
+function HostRoomFor({ code, me }: { code: string; me: Address }) {
   const now = useNow();
   const [text, setText] = useState("");
   const [opts, setOpts] = useState(["", ""]);
