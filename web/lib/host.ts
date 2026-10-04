@@ -1,7 +1,7 @@
 import { bytesToHex, decodeEventLog, encodeAbiParameters, encodeFunctionData, keccak256, numberToHex, parseEther, type Address, type Hex } from "viem";
 import { factoryAbi, roomAbi, tokenAbi } from "./abi";
 import { contracts } from "./deployments";
-import { send } from "./relay";
+import { PlainError, send } from "./relay";
 import { getAccount } from "./signer";
 
 /**
@@ -71,6 +71,20 @@ export async function resolveQuestion(room: Address, id: bigint, option: number)
   await send(room, encodeFunctionData({ abi: roomAbi, functionName: "resolve", args: [id, numberToHex(BigInt(option), { size: 32 })] }), 2_000_000n);
 }
 
+/**
+ * The dispute window closes on the chain's clock, not this laptop's. The newest block is always a
+ * moment behind the wall clock (and a laptop clock can be off by seconds), so the first try right at
+ * the deadline can still be refused. That is "not yet", not a failure: wait a second and try again.
+ */
 export async function settleQuestion(room: Address, id: bigint) {
-  await send(room, encodeFunctionData({ abi: roomAbi, functionName: "settle", args: [id] }), 2_000_000n);
+  const data = encodeFunctionData({ abi: roomAbi, functionName: "settle", args: [id] });
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await send(room, data, 2_000_000n);
+      return;
+    } catch (err) {
+      if (!(err instanceof PlainError) || err.code !== "DisputeWindowOpen" || attempt >= 8) throw err;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
 }

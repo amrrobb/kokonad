@@ -12,6 +12,8 @@ import { getAccount } from "@/lib/signer";
 import { Avatar, coins } from "@/components/ui";
 
 const OPTION_COLORS = ["#7CC1F5", "#FF6B4A", "#F7C948", "#B9A2F0", "#A8E6CF", "#FFB08F"];
+/** Seconds this laptop waits past a chain deadline before offering the next step: the newest block trails the wall clock. */
+const CLOCK_MARGIN = 2;
 const STATE: Record<number, string> = { 0: "sealed", 1: "live", 2: "opening answers", 3: "opening answers", 4: "result set", 5: "done", 6: "cancelled" };
 
 function useNow() {
@@ -69,7 +71,7 @@ function QuestionCard({ room, q, now, anyLive, act }: { room: Address; q: HostQu
               {[20, 30, 45, 60, 90].map((t) => <option key={t} value={t}>{t} s</option>)}
             </select>
             <Btn onClick={() => act("Opening", () => openQuestion(room, d, timer))} disabled={anyLive}>Open question</Btn>
-            {anyLive && <span className="text-ink-3">Finish the live question first.</span>}
+            {anyLive && <span className="text-ink-3">Pay out the current question first.</span>}
           </>
         ) : <span className="text-ink-3">Sealed from another tab; open it there.</span>)}
         {q.status === Status.OPEN && <span className="tabular-nums">{Math.max(0, q.lockAt - now)} s left · {q.answerers} of {q.charged} answered</span>}
@@ -84,8 +86,8 @@ function QuestionCard({ room, q, now, anyLive, act }: { room: Address; q: HostQu
         )}
         {q.status === Status.RESOLVED && (
           <>
-            <span>{q.winners} right · {now < q.disputeUntil ? `can be disputed for ${q.disputeUntil - now} s` : "no longer disputable"}</span>
-            <Btn onClick={() => act("Paying out", () => settleQuestion(room, q.id))} disabled={now <= q.disputeUntil}>Pay out</Btn>
+            <span>{q.winners} right · {now <= q.disputeUntil + CLOCK_MARGIN ? `can be disputed for ${q.disputeUntil + CLOCK_MARGIN - now + 1} s` : "no longer disputable"}</span>
+            <Btn onClick={() => act("Paying out", () => settleQuestion(room, q.id))} disabled={now <= q.disputeUntil + CLOCK_MARGIN}>Pay out</Btn>
           </>
         )}
         {q.status === Status.SETTLED && <span>Paid out to {q.winners} {q.winners === 1 ? "person" : "people"}.</span>}
@@ -132,7 +134,9 @@ export default function HostRoom() {
   }
 
   const questions = qsQ.data?.questions ?? [];
-  const anyLive = questions.some((q) => q.status >= Status.OPEN && q.status <= Status.REVEAL);
+  // The room runs one question at a time, and a question is only finished once it is paid out (or
+  // cancelled). The contract refuses to open the next one before that, so the button must not offer it.
+  const anyLive = questions.some((q) => q.status >= Status.OPEN && q.status <= Status.RESOLVED);
   const validNew = text.trim() && opts.filter((o) => o.trim()).length >= 2;
 
   return (
