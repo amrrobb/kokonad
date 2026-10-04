@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { DynamicSection } from "./dynamic-section";
 import { MeraSection } from "./mera-section";
 import { LogProvider, useLog } from "./log";
@@ -9,8 +9,8 @@ const hasDynamic = Boolean(process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID);
 
 function Coexistence() {
   const { passkeyEvents, lines } = useLog();
-  const [host, setHost] = useState("");
-  useEffect(() => setHost(window.location.host), []);
+  // Empty on the server, the real host in the browser, without a hydration mismatch.
+  const host = useSyncExternalStore(() => () => {}, () => window.location.host, () => "");
   const rpIds = useMemo(
     () => Array.from(new Set(passkeyEvents.map((e) => e.rpId ?? "?"))),
     [passkeyEvents],

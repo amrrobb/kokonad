@@ -45,3 +45,8 @@ next-env.d.ts
 
 # local browser-driving scripts and screenshots
 .e2e/
+
+# end-to-end suite: its own build, reports and screenshots
+/.next-e2e/
+/test-results/
+/playwright-report/

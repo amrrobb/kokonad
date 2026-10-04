@@ -1,0 +1,212 @@
+/**
+ * One whole game, the way an event runs it: a host on a laptop, three people on phones.
+ * Every account is made by the app in its own browser context; nobody holds MON; the relayer pays.
+ *
+ * Steps share one room, so they run in order and stop at the first failure.
+ * Every money claim on a screen is checked against the chain read directly (helpers.ledger).
+ */
+import { expect, test } from "@playwright/test";
+import { COIN, Status, balancePill, expectFits, expectPlainLanguage, joinAs, ledger, openTab, pickAndLock, pub, roomAbi, roomAddress, sealAndOpen, shot, stack, tokenAbi, type Tab } from "./helpers";
+import type { Address } from "viem";
+
+test.describe.configure({ mode: "serial" });
+
+let host: Tab;
+let eka: Tab; // phone, will be right
+let fajar: Tab; // laptop-width, will be wrong
+let gita: Tab; // phone, sits the first question out
+let code: string;
+let room: Address;
+
+test.afterAll(async () => {
+  for (const t of [host, eka, fajar, gita]) await t?.page.context().close();
+});
+
+test("host creates a sponsored room for three people", async ({ browser }, info) => {
+  host = await openTab(browser, "host", 1280, 800);
+  await host.page.goto("/host");
+  await host.page.getByLabel("People").fill("3");
+  await expect(host.page.getByText("Budget: 60 coins")).toBeVisible();
+  const create = host.page.getByRole("button", { name: "Create room" });
+  await expect(create).toBeEnabled();
+  await create.click();
+  await host.page.waitForURL(/\/host\/[A-Z0-9]{6}$/, { timeout: 90_000 });
+  code = host.page.url().split("/").pop()!;
+  await expect(host.page.getByRole("heading", { name: "Add a question" })).toBeVisible();
+  await shot(host, info, "1-room");
+
+  // The code on the screen is the code the chain knows, and the budget is really there.
+  room = await roomAddress(code);
+  expect(await pub.readContract({ address: room, abi: roomAbi, functionName: "budget" })).toBe(60n * COIN);
+  expect(await pub.readContract({ address: stack().contracts.KokoToken, abi: tokenAbi, functionName: "balanceOf", args: [room] })).toBe(60n * COIN);
+});
+
+test("a tab that did not create the room cannot run it", async ({ browser }) => {
+  const stranger = await openTab(browser, "stranger", 1280, 800);
+  await stranger.page.goto(`/host/${code}`);
+  await expect(stranger.page.getByRole("heading", { name: "This room is hosted from another tab." })).toBeVisible();
+  await expect(stranger.page.getByRole("button", { name: "Seal question" })).toHaveCount(0);
+  await stranger.page.context().close();
+});
+
+test("three people join from their own devices and get their coins", async ({ browser }, info) => {
+  eka = await joinAs(browser, code, "Eka", 360, 780);
+  fajar = await joinAs(browser, code, "Fajar", 1280, 800);
+  gita = await joinAs(browser, code, "Gita", 360, 780);
+  for (const t of [eka, fajar, gita]) {
+    await expect(t.page.getByText("20 coins in your balance")).toBeVisible({ timeout: 60_000 });
+    await expect(balancePill(t.page)).toHaveText("20");
+    await expectPlainLanguage(t.page, `${t.label} lobby`);
+  }
+  await expect(eka.page.getByRole("heading", { name: "Hi, Eka." })).toBeVisible();
+  await expect(eka.page.getByText("In the room (3)")).toBeVisible();
+  await expectFits(eka.page, "lobby 360");
+  await shot(eka, info, "2-lobby");
+
+  // Host sees all three, and the budget is spent.
+  // (an avatar with the initials sits in the same row, so match the row, not the exact text)
+  await expect(host.page.locator("aside ul li")).toHaveText([/Eka$/, /Fajar$/, /Gita$/]);
+  await expect(host.page.locator("aside").getByText("Budget left")).toContainText("0");
+
+  const l = await ledger(room);
+  expect(Object.keys(l).sort()).toEqual(["Eka", "Fajar", "Gita"]);
+  for (const p of Object.values(l)) expect(p).toMatchObject({ deposit: 20n * COIN, held: 0n });
+  expect(await pub.readContract({ address: room, abi: roomAbi, functionName: "budget" })).toBe(0n);
+  // Three different people really are three different accounts.
+  expect(new Set(Object.values(l).map((p) => p.address)).size).toBe(3);
+});
+
+test("a fourth person is told plainly that the room has no coins left for them", async ({ browser }) => {
+  const hadi = await joinAs(browser, code, "Hadi", 360, 780);
+  await expect(hadi.page.getByRole("heading", { name: "Something didn't go through." })).toBeVisible({ timeout: 60_000 });
+  await expect(hadi.page.getByText("The host hasn't added coins yet. Ask your host.")).toBeVisible();
+  await expect(hadi.page.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expectPlainLanguage(hadi.page, "join refused");
+  expect(Object.keys(await ledger(room))).not.toContain("Hadi");
+  await hadi.page.context().close();
+});
+
+test("question 1: answers stay sealed, open on their own, and the right person is paid", async ({}, info) => {
+  await sealAndOpen(host, "Who wins tonight's final?", ["Team Kopi", "Team Sate", "Team Gudeg"], "20");
+
+  for (const t of [eka, fajar, gita]) {
+    await expect(t.page.getByRole("heading", { name: "Who wins tonight's final?" })).toBeVisible();
+    await expect(balancePill(t.page)).toHaveText("19"); // one play went into the pot
+  }
+  await expect(eka.page.getByText("pot 3")).toBeVisible();
+  await expectFits(eka.page, "question 360");
+  await shot(eka, info, "3-question");
+
+  await pickAndLock(eka, "Team Sate");
+  await pickAndLock(fajar, "Team Kopi");
+  await expectPlainLanguage(eka.page, "sealed");
+  await expect(host.page.getByText("2 of 3 answered")).toBeVisible();
+
+  // While the question is live the chain holds only commitments: no answer is readable yet.
+  const live = await pub.readContract({ address: room, abi: roomAbi, functionName: "getQuestion", args: [0n] });
+  expect(live.status).toBe(Status.OPEN);
+  expect(live.revealed).toBe(0);
+
+  // Time runs out. Gita never answered; the two sealed answers open without anyone touching anything.
+  await expect(gita.page.getByRole("heading", { name: "Time's up. Your 1 coin stayed in the pot." })).toBeVisible({ timeout: 40_000 });
+  await expect(host.page.getByText("2 of 2 answers open")).toBeVisible({ timeout: 60_000 });
+  await expect(eka.page.getByRole("heading", { name: "Everyone's answers are open" })).toBeVisible();
+  await shot(host, info, "4-answers-open");
+
+  const sate = host.page.getByRole("button", { name: "Team Sate", exact: true });
+  await expect(sate).toBeEnabled();
+  await sate.click();
+
+  await expect(eka.page.getByText("Nice one!")).toBeVisible();
+  await expect(eka.page.getByText("+3", { exact: true })).toBeVisible();
+  await expect(eka.page.getByText("Team Sate was right. Pot of 3 split 1 way, arriving when the result is final.")).toBeVisible();
+  await expect(fajar.page.getByText("Not this time")).toBeVisible();
+  await expect(fajar.page.getByText("You picked Team Kopi. Team Sate was right. Your play went to the pot.")).toBeVisible();
+  await expect(gita.page.getByText("You sat this one out. Team Sate was right. Your play went to the pot.")).toBeVisible();
+  for (const t of [eka, fajar, gita]) await expectPlainLanguage(t.page, `${t.label} result`);
+  await shot(eka, info, "5-win");
+  await shot(fajar, info, "5-lose");
+
+  // Regression (18 Sep): a loser's screen briefly named the wrong answer when reads came from two blocks.
+  let wrong = 0;
+  for (const until = Date.now() + 6_000; Date.now() < until; ) {
+    if ((await fajar.page.innerText("body")).includes("Team Kopi was right")) wrong++;
+    await fajar.page.waitForTimeout(250);
+  }
+  expect(wrong, "samples of the loser's screen naming the wrong answer").toBe(0);
+
+  // The result can still be disputed: paying out is not offered yet, and nothing has moved.
+  const payOut = host.page.getByRole("button", { name: "Pay out" });
+  await expect(payOut).toBeDisabled();
+  expect((await ledger(room)).Eka!.held).toBe(0n);
+
+  await expect(payOut).toBeEnabled({ timeout: 90_000 });
+  await payOut.click();
+  await expect(host.page.getByText("Paid out to 1 person.")).toBeVisible();
+  await expect(eka.page.getByText("in your balance now.")).toBeVisible();
+  await expect(balancePill(eka.page)).toHaveText("22");
+  await expect(balancePill(fajar.page)).toHaveText("19");
+  await expect(balancePill(gita.page)).toHaveText("19");
+  await shot(eka, info, "6-paid");
+  await shot(host, info, "6-paid");
+
+  // The chain agrees with every screen.
+  const q = await pub.readContract({ address: room, abi: roomAbi, functionName: "getQuestion", args: [0n] });
+  expect(q.status).toBe(Status.SETTLED);
+  expect(q.options[Number(BigInt(q.outcome))]).toBe("Team Sate");
+  const l = await ledger(room);
+  expect(await pub.readContract({ address: room, abi: roomAbi, functionName: "getWinners", args: [0n] })).toEqual([l.Eka!.address]);
+  expect(l.Eka).toMatchObject({ deposit: 19n * COIN, held: 3n * COIN });
+  expect(l.Fajar).toMatchObject({ deposit: 19n * COIN, held: 0n });
+  expect(l.Gita).toMatchObject({ deposit: 19n * COIN, held: 0n });
+  // Conservation: every coin the host put in is either still in the room or in a player's account.
+  const inRoom = await pub.readContract({ address: stack().contracts.KokoToken, abi: tokenAbi, functionName: "balanceOf", args: [room] });
+  expect(inRoom + l.Eka!.held + l.Fajar!.held + l.Gita!.held).toBe(60n * COIN);
+  expect(inRoom).toBe(57n * COIN);
+});
+
+test("question 2: nobody is right, the question is cancelled and every play goes back", async ({}, info) => {
+  await sealAndOpen(host, "How many people showed up?", ["Under 20", "20 to 40", "Over 40"], "20");
+  for (const t of [eka, fajar, gita]) await expect(t.page.getByRole("heading", { name: "How many people showed up?" })).toBeVisible();
+  await expect(balancePill(fajar.page)).toHaveText("18");
+
+  // A new question starts clean: nothing is pre-selected from the one before.
+  for (const t of [eka, fajar]) await expect(t.page.getByRole("button", { name: "Lock answer" })).toBeDisabled();
+
+  await pickAndLock(eka, "Under 20");
+  await pickAndLock(fajar, "Under 20");
+  await pickAndLock(gita, "20 to 40");
+  // Regression (3 Oct): players who had opened an answer in question 1 never opened one again.
+  await expect(host.page.getByText("3 of 3 answers open")).toBeVisible({ timeout: 60_000 });
+
+  const over = host.page.getByRole("button", { name: "Over 40", exact: true });
+  await expect(over).toBeEnabled();
+  await over.click();
+
+  await expect(host.page.getByText("Cancelled. Everyone's play went back.")).toBeVisible();
+  for (const t of [eka, fajar, gita]) {
+    await expect(t.page.getByRole("heading", { name: "This question was cancelled." })).toBeVisible();
+    await expectPlainLanguage(t.page, `${t.label} cancelled`);
+  }
+  await expect(balancePill(eka.page)).toHaveText("22");
+  await expect(balancePill(fajar.page)).toHaveText("19");
+  await shot(fajar, info, "7-cancelled");
+
+  const q = await pub.readContract({ address: room, abi: roomAbi, functionName: "getQuestion", args: [1n] });
+  expect(q.status).toBe(Status.VOIDED);
+  const l = await ledger(room);
+  for (const name of ["Eka", "Fajar", "Gita"]) expect(l[name]!.deposit, `${name} deposit after the refund`).toBe(19n * COIN);
+  const inRoom = await pub.readContract({ address: stack().contracts.KokoToken, abi: tokenAbi, functionName: "balanceOf", args: [room] });
+  expect(inRoom).toBe(57n * COIN);
+});
+
+test("nothing broke quietly on any screen", async () => {
+  // Allowed: the relayer answering 422 "not yet". A phone asks to open its answer the instant its own
+  // clock says time is up; the chain's newest block is a moment behind, so the first ask can be refused
+  // and the app asks again on its next poll. The browser logs each refusal. Anything else is a failure.
+  const notYet = /status of 422/;
+  for (const t of [host, eka, fajar, gita]) {
+    expect(t.errors.filter((e) => !notYet.test(e)), `${t.label} console errors`).toEqual([]);
+    expect(t.errors.length, `${t.label}: "not yet" refusals should stay a handful, not a retry storm`).toBeLessThanOrEqual(6);
+  }
+});
