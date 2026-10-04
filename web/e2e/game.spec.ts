@@ -6,8 +6,8 @@
  * Every money claim on a screen is checked against the chain read directly (helpers.ledger).
  */
 import { expect, test } from "@playwright/test";
-import { COIN, Status, balancePill, flyingCoins, resultRows, expectFits, expectPlainLanguage, joinAs, ledger, openTab, pickAndLock, pub, roomAbi, roomAddress, sealAndOpen, shot, stack, tokenAbi, type Tab } from "./helpers";
-import type { Address } from "viem";
+import { COIN, Status, balancePill, flyingCoins, resultRows, expectFits, expectPlainLanguage, joinAs, ledger, openTab, hostCard, openQuestion, pickAndLock, prepareQuestions, pub, roomAbi, roomAddress, setResult, shot, stack, tokenAbi, type Tab } from "./helpers";
+import { parseAbi, type Address } from "viem";
 
 test.describe.configure({ mode: "serial" });
 
@@ -32,7 +32,19 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
   await create.click();
   await host.page.waitForURL(/\/host\/[A-Z0-9]{6}$/, { timeout: 90_000 });
   code = host.page.url().split("/").pop()!;
-  await expect(host.page.getByRole("heading", { name: "Add a question" })).toBeVisible();
+  await expect(host.page.getByRole("heading", { name: "Write your questions" })).toBeVisible();
+
+  // The host writes the whole game up front and seals it in one go, before anyone has joined.
+  await prepareQuestions(host, [
+    { text: "Who wins tonight's final?", options: ["Team Kopi", "Team Sate", "Team Gudeg"] },
+    { text: "How many people showed up?", options: ["Under 20", "20 to 40", "Over 40"] },
+  ]);
+  expect(await pub.readContract({ address: await roomAddress(code), abi: parseAbi(["function questionCount() view returns (uint256)"]), functionName: "questionCount" })).toBe(2n);
+  // Only the next question can be opened, and not into an empty room.
+  await expect(hostCard(host, 1).getByRole("button", { name: "Open question 1" })).toBeDisabled();
+  await expect(hostCard(host, 1).getByText("Wait for someone to join.")).toBeVisible();
+  await expect(hostCard(host, 2).getByText("Up next after question 1.")).toBeVisible();
+  await expect(hostCard(host, 2).getByRole("button", { name: /Open question/ })).toHaveCount(0);
   await shot(host, info, "1-room");
 
   // The code on the screen is the code the chain knows, and the budget is really there.
@@ -45,7 +57,7 @@ test("a tab that did not create the room cannot run it", async ({ browser }) => 
   const stranger = await openTab(browser, "stranger", 1280, 800);
   await stranger.page.goto(`/host/${code}`);
   await expect(stranger.page.getByRole("heading", { name: "This room is hosted from another tab." })).toBeVisible();
-  await expect(stranger.page.getByRole("button", { name: "Seal question" })).toHaveCount(0);
+  await expect(stranger.page.getByRole("button", { name: /Seal|Open question/ })).toHaveCount(0);
   await stranger.page.context().close();
 });
 
@@ -87,7 +99,7 @@ test("a fourth person is told plainly that the room has no coins left for them",
 });
 
 test("question 1: answers stay sealed, open on their own, and the right person is paid", async ({}, info) => {
-  await sealAndOpen(host, "Who wins tonight's final?", ["Team Kopi", "Team Sate", "Team Gudeg"], "20");
+  await openQuestion(host, 1, "20");
 
   for (const t of [eka, fajar, gita]) {
     await expect(t.page.getByRole("heading", { name: "Who wins tonight's final?" })).toBeVisible();
@@ -113,9 +125,14 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await expect(eka.page.getByRole("heading", { name: "Everyone's answers are open" })).toBeVisible();
   await shot(host, info, "4-answers-open");
 
-  const sate = host.page.getByRole("button", { name: "Team Sate", exact: true });
-  await expect(sate).toBeEnabled();
-  await sate.click();
+  // The host sees how the opened answers split, picks one, and can back out before confirming.
+  const card = hostCard(host, 1);
+  await expect(card.getByRole("button", { name: /^Team/ })).toHaveText([/Team Kopi\s*1 answer$/, /Team Sate\s*1 answer$/, /Team Gudeg\s*0 answers$/]);
+  await card.getByRole("button", { name: /^Team Kopi/ }).click();
+  await card.getByRole("button", { name: "Back" }).click();
+  await expect(card.getByRole("alertdialog")).toHaveCount(0);
+  expect((await pub.readContract({ address: room, abi: roomAbi, functionName: "getQuestion", args: [0n] })).status, "backing out sets nothing").not.toBe(Status.RESOLVED);
+  await setResult(host, 1, "Team Sate");
 
   await expect(eka.page.getByText("Nice one!")).toBeVisible();
   await expect(eka.page.getByTestId("result-amount")).toHaveText("+3");
@@ -144,15 +161,15 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   }
   expect(wrong, "samples of the loser's screen naming the wrong answer").toBe(0);
 
-  // The result can still be disputed: paying out is not offered yet, and nothing has moved.
-  const payOut = host.page.getByRole("button", { name: "Pay out" });
-  await expect(payOut).toBeDisabled();
+  // The result can still be disputed: nothing has moved yet, and the next question waits its turn.
+  await expect(card.getByText(/pays out on its own in \d+ s unless people disagree/)).toBeVisible();
   expect((await ledger(room)).Eka!.held).toBe(0n);
+  await expect(hostCard(host, 2).getByRole("button", { name: "Open question 2" })).toBeDisabled();
+  await expect(hostCard(host, 2).getByText("Question 1 finishes first.")).toBeVisible();
 
-  await expect(payOut).toBeEnabled({ timeout: 90_000 });
-  await payOut.click();
+  // The host does nothing more: the pay-out is sent on its own once the window has passed.
   // The one animated moment: ten coins fly to the winner's balance when the pay-out lands. Nobody else gets it.
-  await expect(flyingCoins(eka.page)).toHaveCount(10);
+  await expect(flyingCoins(eka.page)).toHaveCount(10, { timeout: 120_000 });
   await eka.page.waitForTimeout(350);
   await shot(eka, info, "6-coins-flying");
   expect(await flyingCoins(fajar.page).count()).toBe(0);
@@ -181,7 +198,7 @@ test("question 1: answers stay sealed, open on their own, and the right person i
 });
 
 test("question 2: nobody is right, the question is cancelled and every play goes back", async ({}, info) => {
-  await sealAndOpen(host, "How many people showed up?", ["Under 20", "20 to 40", "Over 40"], "20");
+  await openQuestion(host, 2, "20");
   for (const t of [eka, fajar, gita]) await expect(t.page.getByRole("heading", { name: "How many people showed up?" })).toBeVisible();
   await expect(balancePill(fajar.page)).toHaveText("18");
 
@@ -194,9 +211,7 @@ test("question 2: nobody is right, the question is cancelled and every play goes
   // Regression (3 Oct): players who had opened an answer in question 1 never opened one again.
   await expect(host.page.getByText("3 of 3 answers open")).toBeVisible({ timeout: 60_000 });
 
-  const over = host.page.getByRole("button", { name: "Over 40", exact: true });
-  await expect(over).toBeEnabled();
-  await over.click();
+  await setResult(host, 2, "Over 40");
 
   await expect(host.page.getByText("Cancelled. Everyone's play went back.")).toBeVisible();
   for (const t of [eka, fajar, gita]) {

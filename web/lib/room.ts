@@ -178,6 +178,8 @@ export interface HostQuestion {
   disputeUntil: number;
   outcome: bigint;
   winners: number;
+  /** How many opened answers chose each option. Empty until answers start opening (never before time is up). */
+  tally: number[];
 }
 
 /** Every question in the room and the host's budget, read at one block. */
@@ -187,7 +189,10 @@ export async function readHostQuestions(address: Address): Promise<{ budget: big
       publicClient.readContract({ address, abi: roomAbi, functionName: fn as never, args: args as never, blockNumber });
     const [budget, count] = (await Promise.all([r("budget"), r("questionCount")])) as [bigint, bigint];
     const ids = Array.from({ length: Number(count) }, (_, i) => BigInt(i));
-    const qs = await Promise.all(ids.map((id) => Promise.all([r("getQuestion", [id]), r("getWinners", [id])])));
+    const qs = await Promise.all(ids.map((id) => Promise.all([r("getQuestion", [id]), r("getWinners", [id]), r("getRevealers", [id])])));
+    const picks = await Promise.all(
+      qs.map(([, , rev], i) => Promise.all((rev as readonly Address[]).map((p) => r("getAnswer", [ids[i]!, p]) as Promise<{ answer: `0x${string}` }>))),
+    );
     const now = Math.floor(Date.now() / 1000);
     return {
       budget,
@@ -207,6 +212,7 @@ export async function readHostQuestions(address: Address): Promise<{ budget: big
           disputeUntil: Number(q.disputeUntil),
           outcome: BigInt(q.outcome),
           winners: (w as readonly Address[]).length,
+          tally: q.options.map((_, o) => picks[i]!.filter((a) => Number(BigInt(a.answer)) === o).length),
         };
       }),
     };

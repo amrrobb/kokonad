@@ -47,7 +47,13 @@ const OUTSIDE_STUB = JSON.stringify({ groups: {}, wallets: {} });
 const isLocal = (url: string) => ["localhost", "127.0.0.1"].includes(new URL(url).hostname);
 
 export async function openTab(browser: Browser, label: string, width: number, height: number, opts: { reducedMotion?: boolean } = {}): Promise<Tab> {
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, reducedMotion: opts.reducedMotion ? "reduce" : "no-preference" });
+  const context = await browser.newContext({
+    viewport: { width, height },
+    deviceScaleFactor: 1,
+    reducedMotion: opts.reducedMotion ? "reduce" : "no-preference",
+    // E2E_VIDEO=1 records every tab at its own viewport size (scale factor stays 1 so the frame is the viewport).
+    ...(process.env.E2E_VIDEO ? { recordVideo: { dir: `test-results/videos/${label}`, size: { width, height } } } : {}),
+  });
   const errors: string[] = [];
   const outside: string[] = [];
   // Hermetic: nothing a page asks for may reach the network. Requests that try are recorded and
@@ -111,20 +117,44 @@ export async function ledger(room: Address): Promise<Record<string, { address: A
 /** The coin pill in a participant's header: deposit in the room plus coins already paid out. */
 export const balancePill = (page: Page) => page.locator("header span.tabular-nums");
 
-/** Host types a question, seals it, and opens it with the given timer. */
-export async function sealAndOpen(host: Tab, text: string, options: string[], seconds: string): Promise<void> {
-  await host.page.getByPlaceholder("Who wins tonight's final?").fill(text);
-  for (let i = 0; i < options.length; i++) {
-    if (i >= 2) await host.page.getByRole("button", { name: "+ option" }).click();
-    await host.page.getByPlaceholder(`Option ${i + 1}`).fill(options[i]!);
+/** One question card on the host screen, by its number (1-based). */
+export const hostCard = (host: Tab, n: number) => host.page.getByTestId(`question-${n}`);
+
+/** Host writes the whole list, then seals it in one go. Leaves every question sealed and unopened. */
+export async function prepareQuestions(host: Tab, questions: Array<{ text: string; options: string[] }>): Promise<void> {
+  for (const [qi, q] of questions.entries()) {
+    await host.page.getByPlaceholder("Who wins tonight's final?").fill(q.text);
+    for (let i = 0; i < q.options.length; i++) {
+      if (i >= 2) await host.page.getByRole("button", { name: "+ option" }).click();
+      await host.page.getByPlaceholder(`Option ${i + 1}`).fill(q.options[i]!);
+    }
+    if (qi < questions.length - 1) {
+      await host.page.getByRole("button", { name: "Add another" }).click();
+      await expect(host.page.getByTestId("unsealed-list").locator("li")).toHaveCount(qi + 1);
+    }
   }
-  const seal = host.page.getByRole("button", { name: "Seal question" });
+  const seal = host.page.getByRole("button", { name: questions.length === 1 ? "Seal question" : `Seal ${questions.length} questions` });
   await expect(seal).toBeEnabled();
   await seal.click();
-  const open = host.page.getByRole("button", { name: "Open question" });
-  await expect(open).toBeEnabled({ timeout: 60_000 });
-  await host.page.locator("select").first().selectOption(seconds);
+  await expect(hostCard(host, questions.length)).toBeVisible({ timeout: 60_000 });
+}
+
+/** Host opens question n (it must be the next one, with nothing else in flight). */
+export async function openQuestion(host: Tab, n: number, seconds: string): Promise<void> {
+  const open = hostCard(host, n).getByRole("button", { name: `Open question ${n}` });
+  await expect(open).toBeEnabled({ timeout: 120_000 });
+  await hostCard(host, n).getByLabel("Time to answer").selectOption(seconds);
   await open.click();
+}
+
+/** Host picks the right option and confirms it. */
+export async function setResult(host: Tab, n: number, option: string): Promise<void> {
+  const card = hostCard(host, n);
+  const pick = card.getByRole("button", { name: new RegExp(`^${option} \\d+ answers?$`) });
+  await expect(pick).toBeEnabled({ timeout: 60_000 });
+  await pick.click();
+  await expect(card.getByRole("alertdialog")).toContainText(`Set “${option}” as the result?`);
+  await card.getByRole("button", { name: "Set result" }).click();
 }
 
 /** A participant taps an option and seals it. */
