@@ -176,13 +176,15 @@ Required environment variables are listed in each folder's `.env.example`: RPC U
 
 ## Trying it as a judge
 
-1. Open `https://<live-url>` on a laptop → "Create room" → sign in with Google.
-2. Paste any text into the schedule box → "Suggest questions" → "Seal all".
-3. Open `https://<live-url>/r/<CODE>` on a phone (or another tab) → sign in → "Grab 20 coins".
-4. On the laptop click "Open question 1"; answer on the phone; wait for the timer; on the laptop click the correct option.
-5. Watch coins land on the phone, and the transaction counter on the host panel.
+Live at **https://kokonad.robbyn.xyz** (Monad testnet; the relayer at `kokonad-relay.robbyn.xyz` pays for every step).
 
-No wallet, no MON needed: the mock token and gas are handled inside the app.
+1. Open `https://kokonad.robbyn.xyz/host` on a laptop → "Create room" (continue with email, or "Just play on this device").
+2. Type the questions, or say what the event is about and take the first draft → "Seal".
+3. Open `https://kokonad.robbyn.xyz/r/<CODE>` on a phone (or another tab) → pick a name → join.
+4. On the laptop click "Open question 1"; answer on the phone; when the timer ends, tap the right option on the laptop.
+5. Watch the coins land on the phone. The pay-out happens on its own once the result can no longer be disputed.
+
+No wallet, no MON needed: the game token and gas are handled inside the app.
 
 ---
 
