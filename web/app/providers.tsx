@@ -1,6 +1,6 @@
 "use client";
 
-import { DynamicContextProvider, mergeNetworks, useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { DynamicContextProvider, useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { EthereumWalletConnectors, isEthereumWallet } from "@dynamic-labs/ethereum";
 import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -71,9 +71,9 @@ export function Providers({ children }: { children: ReactNode }) {
       settings={{
         environmentId,
         walletConnectors: [EthereumWalletConnectors],
-        overrides: {
-          evmNetworks: (networks) => mergeNetworks([monadTestnetForDynamic], networks),
-        },
+        // Monad testnet only. The dashboard's default networks (Ethereum mainnet) must not reach the
+        // embedded account: the product is testnet-only and wagmi knows no other chain.
+        overrides: { evmNetworks: [monadTestnetForDynamic] },
         initialAuthenticationMode: "connect-and-sign",
       }}
     >

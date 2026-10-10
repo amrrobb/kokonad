@@ -6,7 +6,7 @@
  * Every money claim on a screen is checked against the chain read directly (helpers.ledger).
  */
 import { expect, test } from "@playwright/test";
-import { COIN, Status, balancePill, flyingCoins, resultRows, expectFits, expectPlainLanguage, joinAs, ledger, openTab, hostCard, openQuestion, pickAndLock, prepareQuestions, pub, roomAbi, roomAddress, setResult, shot, stack, tokenAbi, type Tab } from "./helpers";
+import { COIN, Status, balancePill, gotoAsGuest, flyingCoins, resultRows, expectFits, expectPlainLanguage, joinAs, ledger, openTab, hostCard, openQuestion, pickAndLock, prepareQuestions, pub, roomAbi, roomAddress, setResult, shot, stack, tokenAbi, type Tab } from "./helpers";
 import { parseAbi, type Address } from "viem";
 
 test.describe.configure({ mode: "serial" });
@@ -24,7 +24,7 @@ test.afterAll(async () => {
 
 test("host creates a sponsored room for three people", async ({ browser }, info) => {
   host = await openTab(browser, "host", 1280, 800);
-  await host.page.goto("/host");
+  await gotoAsGuest(host.page, "/host");
   await host.page.getByLabel("People").fill("3");
   await expect(host.page.getByText("Budget: 60 coins")).toBeVisible();
   const create = host.page.getByRole("button", { name: "Create room" });
@@ -55,7 +55,7 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
 
 test("a tab that did not create the room cannot run it", async ({ browser }) => {
   const stranger = await openTab(browser, "stranger", 1280, 800);
-  await stranger.page.goto(`/host/${code}`);
+  await gotoAsGuest(stranger.page, `/host/${code}`);
   await expect(stranger.page.getByRole("heading", { name: "This room is hosted from another tab." })).toBeVisible();
   await expect(stranger.page.getByRole("button", { name: /Seal|Open question/ })).toHaveCount(0);
   await stranger.page.context().close();

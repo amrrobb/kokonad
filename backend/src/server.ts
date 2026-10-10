@@ -39,9 +39,14 @@ const statusOf = (r: RelayResult) => (r.status === "refused" ? (REFUSAL_STATUS[r
  * GET  /health
  */
 export function createRelayServer(service: RelayService, opts: { allowedOrigin?: string } = {}): Server {
+  // One origin, or a comma-separated list (local dev plus the deployed site). The request's own
+  // origin is echoed back only when it is on the list; anything else gets no CORS headers at all.
+  const allowed = (opts.allowedOrigin ?? "").split(",").map((o) => o.trim()).filter(Boolean);
   return createServer(async (req, res) => {
-    if (opts.allowedOrigin) {
-      res.setHeader("access-control-allow-origin", opts.allowedOrigin);
+    const origin = req.headers.origin;
+    if (origin && allowed.includes(origin)) {
+      res.setHeader("access-control-allow-origin", origin);
+      res.setHeader("vary", "origin");
       res.setHeader("access-control-allow-methods", "POST, GET, OPTIONS");
       res.setHeader("access-control-allow-headers", "content-type");
     }

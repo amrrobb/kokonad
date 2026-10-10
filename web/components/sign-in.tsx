@@ -1,7 +1,7 @@
 "use client";
 
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
-import { signInEnabled } from "@/lib/signer";
+import { continueAsGuest, signInEnabled } from "@/lib/signer";
 import { PrimaryButton, RoomHeader, Screen } from "./ui";
 
 type Props = { code?: string; title: string; body: string };
@@ -31,6 +31,10 @@ function SignInScreen({ code, title, body }: Props) {
             {sdkHasLoaded ? "Continue" : "One moment…"}
           </PrimaryButton>
           <p className="text-center text-[13px] font-bold text-ink-3">Nothing to install. Your coins stay with your account.</p>
+          <button type="button" onClick={continueAsGuest} className="py-2 text-center text-[14px] font-black text-coral" data-testid="play-as-guest">
+            Just play on this device
+          </button>
+          <p className="-mt-2 text-center text-[12px] font-bold text-ink-3">Quickest way in. Your coins stay in this tab until you close it.</p>
         </div>
       </div>
     </Screen>

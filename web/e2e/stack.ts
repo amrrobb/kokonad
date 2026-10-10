@@ -34,22 +34,24 @@ function fromEnvLocal(name: string): string | undefined {
   }
 }
 
+/**
+ * Where global setup leaves the addresses for the specs (separate worker processes) to read.
+ * One file per target, so a local and a testnet run never overwrite each other's addresses.
+ * Not under test-results/: Playwright empties that folder when a run starts.
+ */
+export const STATE_FILE = join(tmpdir(), `kokonad-e2e-stack-${TARGET}.json`);
+
 export const ANVIL_PORT = 8546;
 export const RELAY_PORT = 8788;
 export const WEB_PORT = 3101;
 export const RPC_URL = TARGET === "testnet" ? (fromEnvLocal("NEXT_PUBLIC_MONAD_RPC_URL") ?? "https://testnet-rpc.monad.xyz") : `http://127.0.0.1:${ANVIL_PORT}`;
 export const RELAY_URL = TARGET === "testnet" ? (fromEnvLocal("NEXT_PUBLIC_RELAY_URL") ?? "http://localhost:8787") : `http://localhost:${RELAY_PORT}`;
-export const WEB_URL = TARGET === "testnet" ? (process.env.E2E_WEB_URL ?? "http://localhost:3000") : `http://localhost:${WEB_PORT}`;
+export const WEB_URL = `http://localhost:${WEB_PORT}`;
 export const CHAIN_ID = 10143;
 export const MULTICALL3: Address = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
 const CONTRACTS = join(ROOT, "contracts");
 const BACKEND = join(ROOT, "backend");
-/**
- * Where global setup leaves the addresses for the specs (separate worker processes) to read.
- * Not under test-results/: Playwright empties that folder when a run starts.
- */
-export const STATE_FILE = join(tmpdir(), "kokonad-e2e-stack.json");
 
 // Anvil's well-known dev keys: public, worthless, local chain only.
 const DEPLOYER_KEY: Hex = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -111,14 +113,31 @@ export function stopStack(): void {
   for (const c of children.splice(0).reverse()) c.kill("SIGTERM");
 }
 
-/** Testnet target: start nothing, just make sure the running app and relayer answer, and read the real addresses. */
+/**
+ * Testnet target: the running relayer (backend/, :8787) and the real chain, but a PRODUCTION build of
+ * this app served here on WEB_PORT. `next dev` is not a fit for a proof run: its HMR tooling crashed
+ * mid-game on 10 Oct and logged errors into the host tab that had nothing to do with the product.
+ * Reads web/.env.local for the Dynamic environment, RPC and relay URL, exactly like the app itself.
+ */
 export async function attachToRunningStack(): Promise<StackState> {
-  await waitFor(`web at ${WEB_URL} (start it with pnpm dev)`, async () => (await fetch(WEB_URL)).ok, 60_000);
   await waitFor(`relayer at ${RELAY_URL} (start it with pnpm start in backend/)`, async () => (await fetch(`${RELAY_URL}/health`)).ok, 5_000);
   const pub = createPublicClient({ chain, transport: http(RPC_URL) });
   if ((await pub.getChainId()) !== CHAIN_ID) throw new Error(`RPC is not chain ${CHAIN_ID}`);
   const file = JSON.parse(readFileSync(join(ROOT, "deployments", "10143.json"), "utf8")) as StackState;
-  console.log(`[e2e] TESTNET target: ${WEB_URL}, relayer ${RELAY_URL}. Every step spends real testnet MON.`);
+  await portFree(WEB_PORT);
+  const logs = mkdtempSync(join(tmpdir(), "kokonad-e2e-testnet-"));
+  const webEnv: Record<string, string | undefined> = { ...process.env, NEXT_DIST_DIR: ".next-e2e" };
+  delete webEnv.NEXT_PUBLIC_DEPLOYMENTS_JSON; // the real deployments file is the source here
+  const next = join(WEB, "node_modules", ".bin", "next");
+  try {
+    execFileSync(next, ["build"], { cwd: WEB, env: webEnv as NodeJS.ProcessEnv, stdio: "pipe" });
+  } catch (err) {
+    const e = err as { stdout?: Buffer; stderr?: Buffer };
+    throw new Error(`next build failed:\n${e.stdout?.toString() ?? ""}\n${e.stderr?.toString() ?? ""}`);
+  }
+  start(next, ["start", "-p", String(WEB_PORT)], { cwd: WEB, env: webEnv, log: join(logs, "web.log") });
+  await waitFor("web", async () => (await fetch(WEB_URL)).ok, 60_000);
+  console.log(`[e2e] TESTNET target: ${WEB_URL} (production build), relayer ${RELAY_URL}. Every step spends real testnet MON. logs: ${logs}`);
   return { contracts: file.contracts };
 }
 

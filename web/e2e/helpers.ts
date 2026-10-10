@@ -74,10 +74,20 @@ export async function openTab(browser: Browser, label: string, width: number, he
   return { page, label, errors, outside };
 }
 
+/**
+ * Opens a screen that needs an account. When sign-in is configured (testnet target with a Dynamic
+ * environment), takes the "Just play on this device" path; otherwise the tab account is already there.
+ */
+export async function gotoAsGuest(page: Page, url: string): Promise<void> {
+  await page.goto(url);
+  const guest = page.getByTestId("play-as-guest");
+  if (await guest.isVisible({ timeout: 4_000 }).catch(() => false)) await guest.click();
+}
+
 /** A participant: opens /r/<code>, types a name, joins. The app creates the account on its own. */
 export async function joinAs(browser: Browser, code: string, name: string, width = 360, height = 780, opts: { reducedMotion?: boolean } = {}): Promise<Tab> {
   const tab = await openTab(browser, name, width, height, opts);
-  await tab.page.goto(`/r/${code}`);
+  await gotoAsGuest(tab.page, `/r/${code}`);
   await tab.page.getByPlaceholder("Your name").fill(name);
   const join = tab.page.getByRole("button", { name: "Join room" });
   await expect(join).toBeEnabled();

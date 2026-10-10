@@ -39,9 +39,20 @@ export function setSignedInSigner(next: Signer | null): void {
   for (const l of listeners) l();
 }
 
-/** The current signer, or null when sign-in is configured and nobody is signed in yet. */
+/**
+ * "Just play on this device": the tab account even though sign-in is configured. For people who will
+ * not type a code at an event. The account lasts as long as the tab; the screens say so.
+ */
+let guest = false;
+export function continueAsGuest(): void {
+  guest = true;
+  for (const l of listeners) l();
+}
+
+/** The current signer, or null when sign-in is configured and nobody has signed in or chosen to play as a guest. */
 export function getSigner(): Signer | null {
-  return signInEnabled ? signedIn : tabSigner();
+  if (!signInEnabled) return tabSigner();
+  return signedIn ?? (guest ? tabSigner() : null);
 }
 
 const subscribe = (l: () => void) => {

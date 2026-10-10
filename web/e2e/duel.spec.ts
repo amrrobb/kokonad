@@ -10,7 +10,7 @@
  */
 import { expect, test } from "@playwright/test";
 import type { Address } from "viem";
-import { COIN, Status, balancePill, flyingCoins, resultRows, expectPlainLanguage, joinAs, ledger, openTab, hostCard, openQuestion, pickAndLock, prepareQuestions, pub, roomAbi, roomAddress, setResult, shot, stack, tokenAbi, type Tab } from "./helpers";
+import { COIN, Status, balancePill, gotoAsGuest, flyingCoins, resultRows, expectPlainLanguage, joinAs, ledger, openTab, hostCard, openQuestion, pickAndLock, prepareQuestions, pub, roomAbi, roomAddress, setResult, shot, stack, tokenAbi, type Tab } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -67,7 +67,7 @@ test.afterAll(async () => {
 
 test("two accounts join the same room and start level", async ({ browser }) => {
   host = await openTab(browser, "duel-host", 1280, 800);
-  await host.page.goto("/host");
+  await gotoAsGuest(host.page, "/host");
   await host.page.getByLabel("People").fill("2");
   await host.page.getByRole("button", { name: "Create room" }).click();
   await host.page.waitForURL(/\/host\/[A-Z0-9]{6}$/, { timeout: 90_000 });

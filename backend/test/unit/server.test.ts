@@ -24,7 +24,7 @@ beforeEach(async () => {
   const service = new RelayService(chain, new Ledger(join(mkdtempSync(join(tmpdir(), "kokonad-srv-")), "l.json")), {
     dailyCapWei: parseEther("5"), maxRequestGas: 8_000_000n, signerRequestsPerMinute: 30,
   });
-  const server = createRelayServer(service, { allowedOrigin: "http://localhost:3000" });
+  const server = createRelayServer(service, { allowedOrigin: "http://localhost:3000, http://localhost:3101" });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   close = () => new Promise((r) => server.close(() => r()));
@@ -64,10 +64,16 @@ describe("HTTP", () => {
     expect(await r.json()).toEqual({ status: "error", reason: "upstream_failed" });
   });
 
-  it("answers health and CORS preflight", async () => {
+  it("answers health, and CORS only for origins on the list", async () => {
     expect((await fetch(`${base}/health`)).status).toBe(200);
-    const pre = await fetch(`${base}/relay`, { method: "OPTIONS" });
-    expect(pre.status).toBe(204);
-    expect(pre.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
+    for (const origin of ["http://localhost:3000", "http://localhost:3101"]) {
+      const pre = await fetch(`${base}/relay`, { method: "OPTIONS", headers: { origin } });
+      expect(pre.status).toBe(204);
+      expect(pre.headers.get("access-control-allow-origin")).toBe(origin);
+    }
+    const other = await fetch(`${base}/relay`, { method: "OPTIONS", headers: { origin: "https://evil.example" } });
+    expect(other.headers.get("access-control-allow-origin")).toBeNull();
+    const none = await fetch(`${base}/relay`, { method: "OPTIONS" });
+    expect(none.headers.get("access-control-allow-origin")).toBeNull();
   });
 });

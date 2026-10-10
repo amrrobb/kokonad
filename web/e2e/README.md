@@ -33,11 +33,12 @@ Monad's 10 MON reserve, load-balanced RPC lag).
 ## Against real Monad testnet
 
 ```sh
-# with `pnpm dev` (web, :3000) and `pnpm start` (backend, :8787) already running
+# with the relayer running (`pnpm start` in backend/, :8787, ALLOWED_ORIGIN including http://localhost:3101)
 E2E_TARGET=testnet pnpm e2e duel.spec.ts
 ```
 
-Starts nothing and stubs nothing: the same spec drives the running app on the real chain. With a Dynamic
+Builds a production copy of the app with your `.env.local` (so the Dynamic environment is on) and serves it on
+:3101; nothing is stubbed and the real chain is used. With a Dynamic
 environment configured, the specs take the "Just play on this device" path, so they exercise the guest account,
 not sign-in. Local and testnet runs keep separate state files and may run back to back, never at the same time
 against the same relayer. The relayer pays for every
