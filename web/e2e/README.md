@@ -25,6 +25,7 @@ and compares: balances, winners, outcome, and that every coin the host funded is
 | `landing.spec.ts` | `/` at 360 and 1280 px: copy, no sideways scroll, both buttons, no request leaves the machine |
 | `join.spec.ts` | `/join` code input rules; unknown code → "Room not found." |
 | `duel.spec.ts` | two accounts head to head over three rounds: winner takes the pot, an even split, a decider; the next question is not offered until the current one is paid; final standings are zero-sum on the chain |
+| `draft.spec.ts` | host asks for a first draft from a one-line brief (the model is a route stub), drops one, seals the rest; exactly the kept ones reach the chain; with no writer configured only the manual form shows |
 | `game.spec.ts` | create room → 3 join → 4th refused in plain words → question with a winner, a loser and a no-show → dispute wait → pay out → a cancelled question with refunds; a non-host tab cannot run the room; plain-language check on every participant screen |
 
 Not covered: Dynamic sign-in, Mera salts, the indexer, and anything that only happens on the real network (rate limits,

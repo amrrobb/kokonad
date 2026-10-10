@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { Status } from "@/lib/abi";
 import { draft, openQuestion, resolveQuestion, sealQuestions, settleQuestion } from "@/lib/host";
-import { PlainError } from "@/lib/relay";
+import { canDraft, draftQuestions, PlainError } from "@/lib/relay";
 import { findRoom, readHostQuestions, readRoom, type HostQuestion } from "@/lib/room";
 import { useSigner } from "@/lib/signer";
 import { SignIn } from "@/components/sign-in";
@@ -184,6 +184,67 @@ function QuestionCard(props: { room: Address; q: HostQuestion; now: number; isNe
   );
 }
 
+const LANGUAGES = ["English", "Indonesian"];
+
+/**
+ * "What's tonight about?" in, a list of drafts out. The writer only proposes: every draft lands in the
+ * same unsealed list as a typed question, where the host can remove it before sealing.
+ */
+function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void; busy: boolean }) {
+  const available = useQuery({ queryKey: ["can-draft"], queryFn: canDraft, staleTime: Infinity });
+  const [topic, setTopic] = useState("");
+  const [count, setCount] = useState(5);
+  const [language, setLanguage] = useState(LANGUAGES[0]);
+  const [thinking, setThinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!available.data) return null;
+
+  function draft() {
+    if (!topic.trim() || thinking) return;
+    setThinking(true);
+    setError(null);
+    draftQuestions(topic.trim(), count, language)
+      .then(onDrafts)
+      .catch((err) => setError(err instanceof PlainError ? err.message : "Couldn't come up with questions just now. Try again, or write them yourself."))
+      .finally(() => setThinking(false));
+  }
+
+  return (
+    <div className="mt-3 rounded-[18px] border border-dashed border-gold bg-[#FFF9EA] p-4" data-testid="drafter">
+      <p className="text-[14px] font-black">Short on time? Say what tonight is about and get a first draft.</p>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <input
+          value={topic}
+          onChange={(e) => setTopic(e.target.value.slice(0, 400))}
+          onKeyDown={(e) => e.key === "Enter" && draft()}
+          placeholder="Jogja dev meetup: 3 lightning talks, pizza, a demo vote at the end"
+          aria-label="What is the event about?"
+          className="min-w-0 flex-1 rounded-[14px] border-2 border-line bg-surface px-3 py-2 text-[15px] font-extrabold outline-none focus:border-coral"
+        />
+        <select value={count} onChange={(e) => setCount(Number(e.target.value))} aria-label="How many questions" className="rounded-full border border-line bg-surface px-3 py-2 font-black">
+          {[3, 5, 8, 10].map((n) => (
+            <option key={n} value={n}>
+              {n} questions
+            </option>
+          ))}
+        </select>
+        <select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language" className="rounded-full border border-line bg-surface px-3 py-2 font-black">
+          {LANGUAGES.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+        <Btn onClick={draft} disabled={!topic.trim() || thinking || busy}>
+          {thinking ? "Writing…" : "Write them for me"}
+        </Btn>
+      </div>
+      {error && <p className="mt-2 text-[13px] font-extrabold text-danger">{error}</p>}
+      {!error && <p className="mt-2 text-[12px] font-bold text-ink-3">You&apos;ll see every draft before anything is sealed. Remove the ones you don&apos;t like.</p>}
+    </div>
+  );
+}
+
 /** Write the whole list first, seal it once. Nothing here is on the chain until "Seal". */
 function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; busy: boolean }) {
   const [text, setText] = useState("");
@@ -205,6 +266,7 @@ function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; bus
     <section className="rounded-[22px] border border-line bg-card p-5">
       <h2 className="text-[16px] font-black">Write your questions</h2>
       <p className="mt-1 text-[13px] font-bold text-ink-3">Add as many as you like, then seal them all at once. Players see each one only when you open it.</p>
+      <Drafter busy={busy} onDrafts={(items) => setList((prev) => [...prev, ...items])} />
 
       {list.length > 0 && (
         <ol className="mt-3 flex flex-col gap-2" data-testid="unsealed-list">

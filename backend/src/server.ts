@@ -1,4 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { SlidingWindowLimiter } from "./rateLimit.js";
+import { draftQuestions, parseDraftRequest, type Completer } from "./questions.js";
 import { RelayService, type RelayResult } from "./relay.js";
 
 const MAX_BODY = 16 * 1024;
@@ -34,11 +36,21 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
 
 const statusOf = (r: RelayResult) => (r.status === "refused" ? (REFUSAL_STATUS[r.reason] ?? 400) : 200);
 
+export interface ServerOptions {
+  allowedOrigin?: string;
+  /** Question drafting upstream. Absent: POST /questions answers 503 `ai_unavailable` and the UI hides the feature. */
+  complete?: Completer;
+  /** Drafting requests per client address per hour (each one is a paid model call). */
+  draftsPerHour?: number;
+}
+
 /**
- * POST /relay  { request: { from, to, value, gas, deadline, data, signature } }   integers as decimal strings
+ * POST /relay      { request: { from, to, value, gas, deadline, data, signature } }   integers as decimal strings
+ * POST /questions  { topic, count?, language? }  ->  { questions: [{ text, options }] }
  * GET  /health
  */
-export function createRelayServer(service: RelayService, opts: { allowedOrigin?: string } = {}): Server {
+export function createRelayServer(service: RelayService, opts: ServerOptions = {}): Server {
+  const drafts = new SlidingWindowLimiter(opts.draftsPerHour ?? 20, 60 * 60 * 1000);
   // One origin, or a comma-separated list (local dev plus the deployed site). The request's own
   // origin is echoed back only when it is on the list; anything else gets no CORS headers at all.
   const allowed = (opts.allowedOrigin ?? "").split(",").map((o) => o.trim()).filter(Boolean);
@@ -52,7 +64,27 @@ export function createRelayServer(service: RelayService, opts: { allowedOrigin?:
     }
     if (req.method === "OPTIONS") return void res.writeHead(204).end();
     try {
-      if (req.method === "GET" && req.url === "/health") return json(res, 200, { ok: true });
+      if (req.method === "GET" && req.url === "/health") return json(res, 200, { ok: true, drafting: !!opts.complete });
+      if (req.method === "POST" && req.url === "/questions") {
+        if (!opts.complete) return json(res, 503, { status: "refused", reason: "ai_unavailable" });
+        let body: unknown;
+        try {
+          body = await readJson(req);
+        } catch (err) {
+          return json(res, 400, { status: "refused", reason: "bad_request", detail: String(err) });
+        }
+        const parsed = parseDraftRequest(body);
+        if (!parsed.ok) return json(res, 400, { status: "refused", reason: "bad_request", detail: parsed.error });
+        const client = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "unknown").split(",")[0]?.trim() ?? "unknown";
+        if (!drafts.tryTake(client)) return json(res, 429, { status: "refused", reason: "rate_limited" });
+        try {
+          const questions = await draftQuestions(parsed.value, opts.complete);
+          return json(res, 200, { status: "ok", questions });
+        } catch (err) {
+          console.error("[questions]", err);
+          return json(res, 502, { status: "error", reason: "upstream_failed" });
+        }
+      }
       if (req.method === "POST" && req.url === "/relay") {
         let body: unknown;
         try {

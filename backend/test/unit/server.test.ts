@@ -77,3 +77,64 @@ describe("HTTP", () => {
     expect(none.headers.get("access-control-allow-origin")).toBeNull();
   });
 });
+
+describe("POST /questions", () => {
+  const ask = (body: unknown) => fetch(`${base}/questions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  it("answers 503 ai_unavailable when no upstream is configured", async () => {
+    const r = await ask({ topic: "Game night" });
+    expect(r.status).toBe(503);
+    expect(await r.json()).toMatchObject({ reason: "ai_unavailable" });
+    const h = await (await fetch(`${base}/health`)).json();
+    expect(h).toMatchObject({ drafting: false });
+  });
+
+  describe("with an upstream", () => {
+    let base2: string;
+    let close2: () => Promise<void>;
+    let calls = 0;
+    beforeEach(async () => {
+      calls = 0;
+      const service = new RelayService(chain, new Ledger(join(mkdtempSync(join(tmpdir(), "kokonad-srv-")), "l.json")), {
+        dailyCapWei: parseEther("5"), maxRequestGas: 8_000_000n, signerRequestsPerMinute: 30,
+      });
+      const server = createRelayServer(service, {
+        draftsPerHour: 2,
+        complete: async (_s, user) => {
+          calls++;
+          if (user.includes("explode")) throw new Error("boom");
+          return JSON.stringify({ questions: [{ text: "Who wins?", options: ["A", "B"] }, { text: "Bad", options: ["only one"] }] });
+        },
+      });
+      await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+      base2 = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      close2 = () => new Promise((r) => server.close(() => r()));
+    });
+    afterEach(() => close2());
+    const ask2 = (body: unknown) => fetch(`${base2}/questions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+    it("returns only usable questions", async () => {
+      const r = await ask2({ topic: "Game night", count: 4 });
+      expect(r.status).toBe(200);
+      expect(await r.json()).toEqual({ status: "ok", questions: [{ text: "Who wins?", options: ["A", "B"] }] });
+      expect((await (await fetch(`${base2}/health`)).json()).drafting).toBe(true);
+    });
+    it("refuses a bad body before calling the model", async () => {
+      const r = await ask2({ topic: "" });
+      expect(r.status).toBe(400);
+      expect(calls).toBe(0);
+    });
+    it("reports an upstream failure as 502, not as a refusal", async () => {
+      const r = await ask2({ topic: "please explode" });
+      expect(r.status).toBe(502);
+      expect(await r.json()).toMatchObject({ status: "error", reason: "upstream_failed" });
+    });
+    it("rate-limits per client and does not call the model past the limit", async () => {
+      expect((await ask2({ topic: "a" })).status).toBe(200);
+      expect((await ask2({ topic: "b" })).status).toBe(200);
+      const r = await ask2({ topic: "c" });
+      expect(r.status).toBe(429);
+      expect(calls).toBe(2);
+    });
+  });
+});

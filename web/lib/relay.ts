@@ -75,3 +75,36 @@ export async function send(to: Address, data: Hex, gas = 500_000n): Promise<Tran
   const code = body.detail ?? body.reason ?? "unknown";
   throw new PlainError(PLAIN[code] ?? PLAIN[body.reason ?? ""] ?? "Something didn't go through. Your account is fine.", code);
 }
+
+export interface DraftQuestion {
+  text: string;
+  options: string[];
+}
+
+/** True once the relayer says it can draft questions; null while unknown. Cached per page load. */
+let drafting: Promise<boolean> | null = null;
+export function canDraft(): Promise<boolean> {
+  drafting ??= fetch(`${RELAY_URL}/health`)
+    .then((r) => r.json() as Promise<{ drafting?: boolean }>)
+    .then((b) => !!b.drafting)
+    .catch(() => false);
+  return drafting;
+}
+
+/** Asks for ready-to-edit questions about `topic`. Nothing is sealed; the host still decides. */
+export async function draftQuestions(topic: string, count: number, language: string): Promise<DraftQuestion[]> {
+  let res: Response;
+  try {
+    res = await fetch(`${RELAY_URL}/questions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ topic, count, language }),
+    });
+  } catch {
+    throw new PlainError("Couldn't reach the question writer. Check your connection and try again.", "network");
+  }
+  const body = (await res.json().catch(() => ({}))) as { status?: string; questions?: DraftQuestion[]; reason?: string };
+  if (body.status === "ok" && body.questions?.length) return body.questions;
+  if (body.reason === "rate_limited") throw new PlainError("That's a lot of drafts in a row. Give it a few minutes.", "rate_limited");
+  throw new PlainError("Couldn't come up with questions just now. Try again, or write them yourself.", body.reason ?? "unknown");
+}

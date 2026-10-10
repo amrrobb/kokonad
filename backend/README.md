@@ -53,6 +53,17 @@ its own 10 MON reserve, so fund it well above 10 MON. It warns at startup when i
 - **A failed read is not a verdict.** RPC failures answer 502, never "refused".
 - **Sends are serialized** with local nonce tracking, so concurrent relays cannot collide.
 
+## Question drafting for hosts
+
+`POST /questions { topic, count?, language? }` answers `{ questions: [{ text, options }] }`: a first draft
+of a game from a one-line brief, which the host edits and seals from the browser like any typed question.
+Nothing here touches the chain or the relayer wallet. The upstream is any OpenAI-compatible chat API
+(`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`; Venice by default). Without `AI_API_KEY` the endpoint answers
+503 `ai_unavailable`, `/health` reports `drafting: false`, and the host screen shows only the manual form.
+Replies are validated and trimmed to what the contract takes (2 to 6 options, 140/40 characters); a reply
+with nothing usable is a 502, never an empty list. Limited to `DRAFTS_PER_HOUR` (20) per client address,
+since every call is a paid model call.
+
 ## Run
 
 ```bash
