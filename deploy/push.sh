@@ -11,8 +11,8 @@ $SSH 'mkdir -p /opt/kokonad/src /opt/kokonad/data && chown 1000:1000 /opt/kokona
   || { echo "put /opt/kokonad/.env.relayer and /opt/kokonad/.env.web on the host first"; exit 1; }
 
 # rsync filters are first-match: the excludes must come before the broad includes.
-rsync -az --delete -e "ssh -i $KEY" \
-  --exclude='node_modules' --exclude='.next' --exclude='.next-e2e' --exclude='test-results' --exclude='playwright-report' \
+rsync -az --delete --delete-excluded -e "ssh -i $KEY" \
+  --exclude='node_modules' --exclude='.next' --exclude='.next-e2e' --exclude='.e2e' --exclude='test-results*' --exclude='playwright-report' --exclude='*.tsbuildinfo' \
   --exclude='.env' --exclude='.env.local' --exclude='.env.production' --exclude='.env.development' --exclude='.data' \
   --include='/deployments/***' --include='/web/***' --include='/backend/***' --exclude='*' \
   "$ROOT/" "$HOST:/opt/kokonad/src/"
