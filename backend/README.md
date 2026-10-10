@@ -61,8 +61,9 @@ Nothing here touches the chain or the relayer wallet. The upstream is any OpenAI
 (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`; Venice by default). Without `AI_API_KEY` the endpoint answers
 503 `ai_unavailable`, `/health` reports `drafting: false`, and the host screen shows only the manual form.
 Replies are validated and trimmed to what the contract takes (2 to 6 options, 140/40 characters); a reply
-with nothing usable is a 502, never an empty list. Limited to `DRAFTS_PER_HOUR` (20) per client address,
-since every call is a paid model call.
+with nothing usable is a 502, never an empty list. Three ceilings on cost, since every call is a paid model call: `DRAFTS_PER_HOUR` (20) per client address,
+`DRAFTS_PER_DAY` (60) across everyone, and `AI_MAX_TOKENS` (1500) per reply. Set a spending limit at the
+provider as well; that one does not depend on this code.
 
 ## Run
 

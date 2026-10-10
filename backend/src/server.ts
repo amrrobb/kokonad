@@ -42,6 +42,8 @@ export interface ServerOptions {
   complete?: Completer;
   /** Drafting requests per client address per hour (each one is a paid model call). */
   draftsPerHour?: number;
+  /** Drafting requests across everyone per rolling 24 h: the ceiling on what a day can cost. */
+  draftsPerDay?: number;
 }
 
 /**
@@ -51,6 +53,7 @@ export interface ServerOptions {
  */
 export function createRelayServer(service: RelayService, opts: ServerOptions = {}): Server {
   const drafts = new SlidingWindowLimiter(opts.draftsPerHour ?? 20, 60 * 60 * 1000);
+  const draftsToday = new SlidingWindowLimiter(opts.draftsPerDay ?? 60, 24 * 60 * 60 * 1000);
   // One origin, or a comma-separated list (local dev plus the deployed site). The request's own
   // origin is echoed back only when it is on the list; anything else gets no CORS headers at all.
   const allowed = (opts.allowedOrigin ?? "").split(",").map((o) => o.trim()).filter(Boolean);
@@ -77,6 +80,7 @@ export function createRelayServer(service: RelayService, opts: ServerOptions = {
         if (!parsed.ok) return json(res, 400, { status: "refused", reason: "bad_request", detail: parsed.error });
         const client = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "unknown").split(",")[0]?.trim() ?? "unknown";
         if (!drafts.tryTake(client)) return json(res, 429, { status: "refused", reason: "rate_limited" });
+        if (!draftsToday.tryTake("all")) return json(res, 503, { status: "refused", reason: "daily_cap" });
         try {
           const questions = await draftQuestions(parsed.value, opts.complete);
           return json(res, 200, { status: "ok", questions });

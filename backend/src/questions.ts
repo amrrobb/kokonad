@@ -116,6 +116,7 @@ export interface UpstreamConfig {
   apiKey: string;
   model: string;
   timeoutMs?: number;
+  maxTokens?: number;
 }
 
 /** OpenAI-compatible chat completions (Venice, OpenAI and most self-hosted servers speak this). */
@@ -130,6 +131,8 @@ export function openAiCompleter(cfg: UpstreamConfig, fetchFn: typeof fetch = fet
         body: JSON.stringify({
           model: cfg.model,
           temperature: 0.8,
+          // A dozen questions with options fits comfortably; this is the ceiling on what one call can cost.
+          max_tokens: cfg.maxTokens ?? 1500,
           messages: [
             { role: "system", content: system },
             { role: "user", content: user },
@@ -157,5 +160,6 @@ export function upstreamFromEnv(env: NodeJS.ProcessEnv = process.env): UpstreamC
     apiKey,
     model: env.AI_MODEL ?? "llama-3.3-70b",
     timeoutMs: Number(env.AI_TIMEOUT_MS ?? 30_000),
+    maxTokens: Number(env.AI_MAX_TOKENS ?? 1500),
   };
 }

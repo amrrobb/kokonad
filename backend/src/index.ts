@@ -26,6 +26,7 @@ const server = createRelayServer(service, {
   allowedOrigin: process.env.ALLOWED_ORIGIN,
   complete: upstream && openAiCompleter(upstream),
   draftsPerHour: Number(process.env.DRAFTS_PER_HOUR ?? 20),
+  draftsPerDay: Number(process.env.DRAFTS_PER_DAY ?? 60),
 });
 if (!upstream) console.warn("[questions] AI_API_KEY not set; hosts write every question by hand");
 server.listen(config.port, async () => {

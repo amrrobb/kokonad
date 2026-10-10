@@ -129,6 +129,23 @@ describe("POST /questions", () => {
       expect(r.status).toBe(502);
       expect(await r.json()).toMatchObject({ status: "error", reason: "upstream_failed" });
     });
+    it("stops for everyone at the daily ceiling", async () => {
+      // The per-client limit is 2 here; a global day limit of 1 must bite first.
+      const service = new RelayService(chain, new Ledger(join(mkdtempSync(join(tmpdir(), "kokonad-srv-")), "l.json")), {
+        dailyCapWei: parseEther("5"), maxRequestGas: 8_000_000n, signerRequestsPerMinute: 30,
+      });
+      let n = 0;
+      const server = createRelayServer(service, { draftsPerHour: 2, draftsPerDay: 1, complete: async () => { n++; return '{"questions":[{"text":"Q?","options":["a","b"]}]}'; } });
+      await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+      const b = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      const go = () => fetch(`${b}/questions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ topic: "x" }) });
+      expect((await go()).status).toBe(200);
+      const r = await go();
+      expect(r.status).toBe(503);
+      expect(await r.json()).toMatchObject({ reason: "daily_cap" });
+      expect(n).toBe(1);
+      await new Promise((r) => server.close(() => r(null)));
+    });
     it("rate-limits per client and does not call the model past the limit", async () => {
       expect((await ask2({ topic: "a" })).status).toBe(200);
       expect((await ask2({ topic: "b" })).status).toBe(200);

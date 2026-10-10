@@ -91,6 +91,7 @@ describe("openAiCompleter", () => {
     expect((captured!.init.headers as Record<string, string>).authorization).toBe("Bearer k");
     const body = JSON.parse(String(captured!.init.body));
     expect(body.model).toBe("m");
+    expect(body.max_tokens).toBe(1500);
     expect(body.messages).toEqual([{ role: "system", content: "sys" }, { role: "user", content: "usr" }]);
   });
   it("throws on a non-2xx upstream", async () => {
