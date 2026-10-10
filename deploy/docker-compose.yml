@@ -1,0 +1,60 @@
+# Kokonad on the Contabo VPS, behind Coolify's Traefik (external network "coolify").
+# Lives at /opt/kokonad: this file, the repo checkout in ./src, and two secret files that never enter git:
+#   .env.relayer  RPC_URL, RELAYER_PRIVATE_KEY, ALLOWED_ORIGIN=https://kokonad.robbyn.xyz, caps, AI_* (optional)
+#   .env.web      NEXT_PUBLIC_* build arguments (baked into the bundle, so a change needs a rebuild)
+# Deploy: deploy/push.sh from a laptop (rsync + build + up). Logs: docker compose logs -f.
+services:
+  web:
+    image: kokonad-web:latest
+    build:
+      context: ./src
+      dockerfile: web/Dockerfile
+      args:
+        NEXT_PUBLIC_RELAY_URL: ${NEXT_PUBLIC_RELAY_URL}
+        NEXT_PUBLIC_MONAD_RPC_URL: ${NEXT_PUBLIC_MONAD_RPC_URL}
+        NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID}
+        NEXT_PUBLIC_PASSKEY_RP_ID: ${NEXT_PUBLIC_PASSKEY_RP_ID}
+    container_name: kokonad-web
+    restart: unless-stopped
+    networks: [coolify]
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: coolify
+      traefik.http.middlewares.kokonad-redir.redirectscheme.scheme: https
+      traefik.http.routers.kokonad-http.entrypoints: http
+      traefik.http.routers.kokonad-http.rule: Host(`kokonad.robbyn.xyz`)
+      traefik.http.routers.kokonad-http.middlewares: kokonad-redir
+      traefik.http.routers.kokonad.entrypoints: https
+      traefik.http.routers.kokonad.rule: Host(`kokonad.robbyn.xyz`)
+      traefik.http.routers.kokonad.tls: "true"
+      traefik.http.routers.kokonad.tls.certresolver: letsencrypt
+      traefik.http.services.kokonad.loadbalancer.server.port: "3000"
+
+  relayer:
+    image: kokonad-relayer:latest
+    build:
+      context: ./src
+      dockerfile: backend/Dockerfile
+    container_name: kokonad-relayer
+    restart: unless-stopped
+    env_file: .env.relayer
+    volumes: ["./data:/data"]
+    networks: [coolify]
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: coolify
+      traefik.http.middlewares.kokonad-relay-redir.redirectscheme.scheme: https
+      traefik.http.routers.kokonad-relay-http.entrypoints: http
+      traefik.http.routers.kokonad-relay-http.rule: Host(`kokonad-relay.robbyn.xyz`)
+      traefik.http.routers.kokonad-relay-http.middlewares: kokonad-relay-redir
+      traefik.http.routers.kokonad-relay.entrypoints: https
+      traefik.http.routers.kokonad-relay.rule: Host(`kokonad-relay.robbyn.xyz`)
+      traefik.http.routers.kokonad-relay.tls: "true"
+      traefik.http.routers.kokonad-relay.tls.certresolver: letsencrypt
+      traefik.http.services.kokonad-relay.loadbalancer.server.port: "8787"
+
+networks:
+  coolify:
+    external: true

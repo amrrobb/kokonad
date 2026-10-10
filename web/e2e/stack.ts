@@ -20,10 +20,14 @@ const ROOT = resolve(WEB, "..");
 
 /**
  * "local" (default): the hermetic stack described above.
- * "testnet": E2E_TARGET=testnet drives the app you already have running (`pnpm dev` + the relayer) against
- * real Monad testnet. Nothing is started or stopped; the relayer pays real testnet MON for every step.
+ * "testnet": E2E_TARGET=testnet builds this app for production and serves it here against the running
+ * relayer (:8787) and real Monad testnet. The relayer pays real testnet MON for every step.
+ * "public": E2E_TARGET=public drives the deployed site (E2E_WEB_URL, default https://kokonad.robbyn.xyz)
+ * and its relayer, exactly as a judge would. Nothing is started, built or stopped.
  */
-export const TARGET: "local" | "testnet" = process.env.E2E_TARGET === "testnet" ? "testnet" : "local";
+export const TARGET: "local" | "testnet" | "public" = process.env.E2E_TARGET === "testnet" ? "testnet" : process.env.E2E_TARGET === "public" ? "public" : "local";
+const PUBLIC_WEB_URL = process.env.E2E_WEB_URL ?? "https://kokonad.robbyn.xyz";
+const PUBLIC_RELAY_URL = process.env.E2E_RELAY_URL ?? "https://kokonad-relay.robbyn.xyz";
 
 function fromEnvLocal(name: string): string | undefined {
   try {
@@ -44,9 +48,9 @@ export const STATE_FILE = join(tmpdir(), `kokonad-e2e-stack-${TARGET}.json`);
 export const ANVIL_PORT = 8546;
 export const RELAY_PORT = 8788;
 export const WEB_PORT = 3101;
-export const RPC_URL = TARGET === "testnet" ? (fromEnvLocal("NEXT_PUBLIC_MONAD_RPC_URL") ?? "https://testnet-rpc.monad.xyz") : `http://127.0.0.1:${ANVIL_PORT}`;
-export const RELAY_URL = TARGET === "testnet" ? (fromEnvLocal("NEXT_PUBLIC_RELAY_URL") ?? "http://localhost:8787") : `http://localhost:${RELAY_PORT}`;
-export const WEB_URL = `http://localhost:${WEB_PORT}`;
+export const RPC_URL = TARGET === "local" ? `http://127.0.0.1:${ANVIL_PORT}` : (fromEnvLocal("NEXT_PUBLIC_MONAD_RPC_URL") ?? "https://testnet-rpc.monad.xyz");
+export const RELAY_URL = TARGET === "public" ? PUBLIC_RELAY_URL : TARGET === "testnet" ? (fromEnvLocal("NEXT_PUBLIC_RELAY_URL") ?? "http://localhost:8787") : `http://localhost:${RELAY_PORT}`;
+export const WEB_URL = TARGET === "public" ? PUBLIC_WEB_URL : `http://localhost:${WEB_PORT}`;
 export const CHAIN_ID = 10143;
 export const MULTICALL3: Address = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
@@ -138,6 +142,17 @@ export async function attachToRunningStack(): Promise<StackState> {
   start(next, ["start", "-p", String(WEB_PORT)], { cwd: WEB, env: webEnv, log: join(logs, "web.log") });
   await waitFor("web", async () => (await fetch(WEB_URL)).ok, 60_000);
   console.log(`[e2e] TESTNET target: ${WEB_URL} (production build), relayer ${RELAY_URL}. Every step spends real testnet MON. logs: ${logs}`);
+  return { contracts: file.contracts };
+}
+
+/** Public target: only check that the site and its relayer answer, then play on the real deployments. */
+export async function attachToPublicStack(): Promise<StackState> {
+  await waitFor(`relayer at ${RELAY_URL}`, async () => (await fetch(`${RELAY_URL}/health`)).ok, 15_000);
+  await waitFor(`site at ${WEB_URL}`, async () => (await fetch(WEB_URL)).ok, 30_000);
+  const pub = createPublicClient({ chain, transport: http(RPC_URL) });
+  if ((await pub.getChainId()) !== CHAIN_ID) throw new Error(`RPC is not chain ${CHAIN_ID}`);
+  const file = JSON.parse(readFileSync(join(ROOT, "deployments", "10143.json"), "utf8")) as StackState;
+  console.log(`[e2e] PUBLIC target: ${WEB_URL}, relayer ${RELAY_URL}. Every step spends real testnet MON.`);
   return { contracts: file.contracts };
 }
 

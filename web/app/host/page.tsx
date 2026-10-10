@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoom } from "@/lib/host";
-import { PlainError } from "@/lib/relay";
+import { PlainError, rememberDraftKey } from "@/lib/relay";
 import { useSigner } from "@/lib/signer";
 import { SignIn } from "@/components/sign-in";
 import { PrimaryButton } from "@/components/ui";
@@ -27,6 +27,8 @@ function Field(props: { label: string; value: number; onChange: (n: number) => v
 
 export default function NewRoom() {
   const signer = useSigner();
+  // /host?draftkey=... : the builder's own browser remembers the key that lifts drafting limits.
+  useEffect(() => rememberDraftKey(window.location.search), []);
   if (!signer) return <SignIn title="Start a room" body="Continue so the room stays yours, on any device." />;
   return <NewRoomForm />;
 }

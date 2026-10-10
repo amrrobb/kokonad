@@ -31,6 +31,15 @@ and compares: balances, winners, outcome, and that every coin the host funded is
 Not covered: Dynamic sign-in, Mera salts, the indexer, and anything that only happens on the real network (rate limits,
 Monad's 10 MON reserve, load-balanced RPC lag).
 
+## Against the deployed site
+
+```sh
+E2E_TARGET=public E2E_VIDEO=1 pnpm e2e duel.spec.ts   # https://kokonad.robbyn.xyz and its relayer, real testnet MON
+```
+
+Nothing is started or built; the suite plays the deployed site the way a judge would. Stop any local relayer
+that holds the same key first: two relayers sending from one account race on the nonce.
+
 ## Against real Monad testnet
 
 ```sh

@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   // bundler resolve files from the repo root so web imports that file instead of a copy.
   turbopack: { root: path.join(__dirname, "..") },
   outputFileTracingRoot: path.join(__dirname, ".."),
+  // The container image copies .next/standalone (a self-contained server) instead of node_modules.
+  output: process.env.NEXT_OUTPUT_STANDALONE ? "standalone" : undefined,
 };
 
 export default nextConfig;

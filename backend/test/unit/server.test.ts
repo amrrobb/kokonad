@@ -146,6 +146,21 @@ describe("POST /questions", () => {
       expect(n).toBe(1);
       await new Promise((r) => server.close(() => r(null)));
     });
+    it("a request with the bypass key skips the limits; a wrong key does not", async () => {
+      const service = new RelayService(chain, new Ledger(join(mkdtempSync(join(tmpdir(), "kokonad-srv-")), "l.json")), {
+        dailyCapWei: parseEther("5"), maxRequestGas: 8_000_000n, signerRequestsPerMinute: 30,
+      });
+      const server = createRelayServer(service, { draftsPerHour: 1, draftBypassToken: "sesame", complete: async () => '{"questions":[{"text":"Q?","options":["a","b"]}]}' });
+      await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+      const b = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      const go = (key?: string) => fetch(`${b}/questions`, { method: "POST", headers: { "content-type": "application/json", ...(key ? { "x-draft-key": key } : {}) }, body: JSON.stringify({ topic: "x" }) });
+      expect((await go("sesame")).status).toBe(200);
+      expect((await go("sesame")).status).toBe(200);
+      expect((await go("wrong")).status).toBe(200); // first and only free one for this client
+      expect((await go("wrong")).status).toBe(429);
+      expect((await go()).status).toBe(429);
+      await new Promise((r) => server.close(() => r(null)));
+    });
     it("rate-limits per client and does not call the model past the limit", async () => {
       expect((await ask2({ topic: "a" })).status).toBe(200);
       expect((await ask2({ topic: "b" })).status).toBe(200);

@@ -91,13 +91,36 @@ export function canDraft(): Promise<boolean> {
   return drafting;
 }
 
+const DRAFT_KEY = "kokonad.draftKey";
+
+/**
+ * The builder's own browser may carry a key that lifts the drafting limits on their own site.
+ * Opening /host?draftkey=... once stores it; this is a testing convenience, never game state.
+ */
+export function rememberDraftKey(search: string): void {
+  try {
+    const key = new URLSearchParams(search).get("draftkey");
+    if (key) localStorage.setItem(DRAFT_KEY, key);
+  } catch {
+    /* storage unavailable: limits simply apply */
+  }
+}
+function draftKey(): string | null {
+  try {
+    return localStorage.getItem(DRAFT_KEY);
+  } catch {
+    return null;
+  }
+}
+
 /** Asks for ready-to-edit questions about `topic`. Nothing is sealed; the host still decides. */
 export async function draftQuestions(topic: string, count: number, language: string): Promise<DraftQuestion[]> {
   let res: Response;
+  const key = draftKey();
   try {
     res = await fetch(`${RELAY_URL}/questions`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...(key ? { "x-draft-key": key } : {}) },
       body: JSON.stringify({ topic, count, language }),
     });
   } catch {
@@ -106,5 +129,6 @@ export async function draftQuestions(topic: string, count: number, language: str
   const body = (await res.json().catch(() => ({}))) as { status?: string; questions?: DraftQuestion[]; reason?: string };
   if (body.status === "ok" && body.questions?.length) return body.questions;
   if (body.reason === "rate_limited") throw new PlainError("That's a lot of drafts in a row. Give it a few minutes.", "rate_limited");
+  if (body.reason === "daily_cap") throw new PlainError("The question writer is resting for today. Write them yourself this time.", "daily_cap");
   throw new PlainError("Couldn't come up with questions just now. Try again, or write them yourself.", body.reason ?? "unknown");
 }

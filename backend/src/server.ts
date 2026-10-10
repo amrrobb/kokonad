@@ -44,6 +44,8 @@ export interface ServerOptions {
   draftsPerHour?: number;
   /** Drafting requests across everyone per rolling 24 h: the ceiling on what a day can cost. */
   draftsPerDay?: number;
+  /** Requests carrying this value in `x-draft-key` skip both drafting limits (the builder testing their own site). */
+  draftBypassToken?: string;
 }
 
 /**
@@ -63,7 +65,7 @@ export function createRelayServer(service: RelayService, opts: ServerOptions = {
       res.setHeader("access-control-allow-origin", origin);
       res.setHeader("vary", "origin");
       res.setHeader("access-control-allow-methods", "POST, GET, OPTIONS");
-      res.setHeader("access-control-allow-headers", "content-type");
+      res.setHeader("access-control-allow-headers", "content-type, x-draft-key");
     }
     if (req.method === "OPTIONS") return void res.writeHead(204).end();
     try {
@@ -79,8 +81,11 @@ export function createRelayServer(service: RelayService, opts: ServerOptions = {
         const parsed = parseDraftRequest(body);
         if (!parsed.ok) return json(res, 400, { status: "refused", reason: "bad_request", detail: parsed.error });
         const client = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "unknown").split(",")[0]?.trim() ?? "unknown";
-        if (!drafts.tryTake(client)) return json(res, 429, { status: "refused", reason: "rate_limited" });
-        if (!draftsToday.tryTake("all")) return json(res, 503, { status: "refused", reason: "daily_cap" });
+        const bypass = !!opts.draftBypassToken && req.headers["x-draft-key"] === opts.draftBypassToken;
+        if (!bypass) {
+          if (!drafts.tryTake(client)) return json(res, 429, { status: "refused", reason: "rate_limited" });
+          if (!draftsToday.tryTake("all")) return json(res, 503, { status: "refused", reason: "daily_cap" });
+        }
         try {
           const questions = await draftQuestions(parsed.value, opts.complete);
           return json(res, 200, { status: "ok", questions });
