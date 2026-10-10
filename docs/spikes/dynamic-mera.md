@@ -82,9 +82,22 @@ If step 3 shows *This device's passkey cannot derive a secret*, the platform aut
 (older Android, Windows Hello without hmac-secret). Record the device and OS; that is the fallback case
 (ARCHITECTURE §4: salt in encrypted localStorage + "do not switch phones" warning).
 
-## Evidence — Dynamic
+## Evidence — Dynamic (partial, 4 Oct 2026, sandbox environment `5b8ab…9d9a`)
 
-None yet. Run the checklist below as soon as the ID lands; it takes about ten minutes.
+Driven headless through the real app (`/host` and `/spike`) with the sandbox environment ID:
+
+| Check | Result |
+|---|---|
+| SDK loads with the environment | `Loaded: yes`, settings fetched (200), 0 console errors |
+| Screens that need an account | show the "Continue" step; "Just play on this device" keeps the tab account available |
+| Continue → Dynamic modal | opens; email field accepted `…+dynamic_test@example.com`; `emailVerifications/create` → 201; six-digit code screen shown |
+| Environment settings read back | email sign-in on; **Google off**; embedded EVM wallet on with automatic creation (V3 MPC); delegated access **off**; Monad not in the dashboard network list (added via `overrides.evmNetworks` in code) |
+| Sign-in completed, account created, signature without popup | **NOT YET**: needs the static OTP shown under Developers → Test Accounts in the dashboard |
+
+Coexistence with Mera is still untested for the same reason. Nothing observed so far contradicts the
+expectation above: Dynamic's flow ran in its own modal and made no `navigator.credentials` call.
+
+### Remaining checklist (about ten minutes once the test-account OTP is known)
 
 ### Dynamic checklist for the next session
 

@@ -37,6 +37,9 @@ Monad's 10 MON reserve, load-balanced RPC lag).
 E2E_TARGET=testnet pnpm e2e duel.spec.ts
 ```
 
-Starts nothing and stubs nothing: the same spec drives the running app on the real chain. The relayer pays for every
+Starts nothing and stubs nothing: the same spec drives the running app on the real chain. With a Dynamic
+environment configured, the specs take the "Just play on this device" path, so they exercise the guest account,
+not sign-in. Local and testnet runs keep separate state files and may run back to back, never at the same time
+against the same relayer. The relayer pays for every
 step, about 1.5 MON for the duel (creating a room alone is ~0.44 MON), and Monad keeps 10 MON of the relayer's balance
 out of reach, so check its balance first. `landing.spec.ts` asserts hermetic behaviour and is meant for the local target.
