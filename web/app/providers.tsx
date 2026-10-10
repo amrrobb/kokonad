@@ -75,6 +75,9 @@ export function Providers({ children }: { children: ReactNode }) {
         // embedded account: the product is testnet-only and wagmi knows no other chain.
         overrides: { evmNetworks: [monadTestnetForDynamic] },
         initialAuthenticationMode: "connect-and-sign",
+        // Email and Google only. Browser-extension wallets are crypto vocabulary on a participant
+        // screen (CLAUDE.md #2), and the embedded account is made for everyone who signs in anyway.
+        walletsFilter: () => [],
       }}
     >
       <WagmiProvider config={wagmiConfig}>
