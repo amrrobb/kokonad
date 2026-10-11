@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { encodeFunctionData, type Address } from "viem";
@@ -13,6 +14,8 @@ import { useSigner } from "@/lib/signer";
 import { SignIn } from "@/components/sign-in";
 import { Avatar, PrimaryButton, RoomHeader, Screen, coins } from "@/components/ui";
 import { QuestionScreen } from "@/components/question";
+import { motion } from "motion/react";
+import { Appear, POP, PopItem } from "@/components/motion";
 
 type Step = "account" | "coins" | "join";
 const STEPS: Array<[Step, string]> = [
@@ -148,18 +151,21 @@ function Room({ code, me }: { code: string; me: Address }) {
       <Screen>
         <RoomHeader code={code} balance={balance} />
         <div className="mt-8 flex flex-col gap-5">
-          <div>
-            <h1 className="text-[30px] font-black leading-[1.1] tracking-[-.02em]">Hi, {myName}.</h1>
-            <p className="mt-2 font-extrabold text-ink-2">The host is setting up questions.</p>
-          </div>
+          <Appear className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[30px] font-black leading-[1.1] tracking-[-.02em]">Hi, {myName}.</h1>
+              <p className="mt-2 font-extrabold text-ink-2">The host is setting up questions.</p>
+            </div>
+            <Image src="/mascot/mascot-sleepy.png" alt="" width={96} height={96} className="drift h-[84px] w-[84px] shrink-0 object-contain" />
+          </Appear>
           <section className="rounded-[22px] border border-line bg-card p-4">
             <h2 className="text-[16px] font-black">In the room ({view.people.length})</h2>
             <ul className="mt-3 flex flex-wrap gap-2">
               {view.people.map((p) => (
-                <li key={p.address} className={`flex items-center gap-1.5 rounded-full border bg-surface py-1 pl-1 pr-3 text-[13px] font-extrabold ${p.address === me ? "border-coral" : "border-line"}`}>
+                <PopItem key={p.address} className={`flex items-center gap-1.5 rounded-full border bg-surface py-1 pl-1 pr-3 text-[13px] font-extrabold ${p.address === me ? "border-coral" : "border-line"}`}>
                   <Avatar address={p.address} name={p.name} />
                   {p.name}
-                </li>
+                </PopItem>
               ))}
             </ul>
           </section>
@@ -193,9 +199,15 @@ function Room({ code, me }: { code: string; me: Address }) {
               const bad = failed?.step === step;
               return (
                 <li key={step} className="flex items-center gap-3 rounded-[14px] border border-line bg-surface px-4 py-3 text-[14px] font-extrabold">
-                  <span className={`grid h-6 w-6 place-items-center rounded-full text-[12px] font-black ${ok ? "bg-green text-white" : bad ? "bg-danger text-white" : "bg-bg-2 text-ink-3"}`}>
+                  <motion.span
+                    key={ok ? "ok" : bad ? "bad" : "wait"}
+                    initial={ok || bad ? { scale: 0.3 } : false}
+                    animate={{ scale: 1 }}
+                    transition={POP}
+                    className={`grid h-6 w-6 place-items-center rounded-full text-[12px] font-black ${ok ? "bg-green text-white" : bad ? "bg-danger text-white" : "bg-bg-2 text-ink-3"}`}
+                  >
                     {ok ? "✓" : bad ? "!" : "…"}
-                  </span>
+                  </motion.span>
                   {label}
                 </li>
               );

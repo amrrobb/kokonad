@@ -8,7 +8,10 @@ import { PlainError, send } from "@/lib/relay";
 import type { QuestionView, RoomView } from "@/lib/room";
 import { saltFor } from "@/lib/salt";
 import Image from "next/image";
+import { motion } from "motion/react";
 import { flyCoins } from "./coins";
+import { Appear, POP, RiseItem } from "./motion";
+import { AnswerDots, PotBowl } from "./pot";
 import { Avatar, PrimaryButton, coins } from "./ui";
 
 const OPTION_COLORS = ["#7CC1F5", "#FF6B4A", "#F7C948", "#B9A2F0", "#A8E6CF", "#FFB08F"];
@@ -34,11 +37,47 @@ function Meta({ view, q }: { view: RoomView; q: QuestionView }) {
   );
 }
 
-function Timer({ left }: { left: number }) {
+const RING = 2 * Math.PI * 26;
+
+/** Seconds left as a number inside a ring that empties. The ring moves at one steady pace; the last five seconds turn darker and tick. */
+function Timer({ left, total }: { left: number; total: number }) {
+  const shown = Math.max(0, left);
+  const part = total > 0 ? Math.min(1, shown / total) : 0;
+  const late = left <= 5;
   return (
-    <span className={`grid h-[60px] w-[60px] shrink-0 place-items-center rounded-full border-[6px] text-[20px] font-black tabular-nums ${left <= 5 ? "border-coral-d text-coral-d" : "border-coral text-ink"}`}>
-      {Math.max(0, left)}
+    <span className="relative grid h-[64px] w-[64px] shrink-0 place-items-center" data-testid="timer">
+      <svg viewBox="0 0 64 64" className="absolute inset-0 -rotate-90" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="var(--color-peach)" strokeWidth="6" />
+        <circle
+          cx="32"
+          cy="32"
+          r="26"
+          fill="none"
+          stroke={late ? "var(--color-coral-d)" : "var(--color-coral)"}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={RING}
+          strokeDashoffset={RING * (1 - part)}
+          style={{ transition: "stroke-dashoffset 1s linear, stroke .2s" }}
+        />
+      </svg>
+      <motion.span key={late ? shown : "calm"} initial={late ? { scale: 1.3 } : false} animate={{ scale: 1 }} transition={POP} className={`text-[20px] font-black tabular-nums ${late ? "text-coral-d" : "text-ink"}`}>
+        {shown}
+      </motion.span>
     </span>
+  );
+}
+
+/** The room at a glance while a question is open: the pot as a bowl, and one dot per player that fills when they seal. */
+function Pulse({ q }: { q: QuestionView }) {
+  return (
+    <div className="flex items-center gap-4 rounded-[18px] bg-bg-2 px-4 py-2.5" data-testid="pulse">
+      <PotBowl coins={Number(q.pot / 10n ** 18n)} width={64} />
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <span className="text-[11px] font-black uppercase tracking-wide text-ink-3">Sealed so far</span>
+        <AnswerDots answered={q.answerers} of={q.charged} />
+      </div>
+    </div>
   );
 }
 
@@ -95,7 +134,7 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   const header = (
     <div className="flex items-start gap-4">
       <h1 className="flex-1 text-[24px] font-black leading-[1.15] tracking-[-.015em]">{q.text}</h1>
-      {q.status === Status.OPEN && <Timer left={left} />}
+      {q.status === Status.OPEN && <Timer left={left} total={q.lockAt - q.openAt} />}
     </div>
   );
 
@@ -103,36 +142,41 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   if (!q.me.charged && q.status <= Status.REVEAL) {
     const outOfPlays = view.me.deposit < view.playPrice;
     return (
-      <div className="flex flex-col gap-5">
+      <Appear key="watching" className="flex flex-col gap-5">
         <Meta view={view} q={q} />
         {header}
         <Note
           title={outOfPlays ? "You're out of plays." : "This question was already running."}
           body={outOfPlays ? "Ask the host for more coins to keep playing." : "You'll play from the next one."}
         />
-      </div>
+      </Appear>
     );
   }
 
   // Answering
   if (open && q.me.hasPlay && !q.me.committed) {
     return (
-      <div className="flex flex-1 flex-col gap-5">
+      <Appear key="answering" className="flex flex-1 flex-col gap-4">
         <Meta view={view} q={q} />
         {header}
+        <Pulse q={q} />
         <ul className="flex flex-col gap-2.5">
           {q.options.map((o, i) => (
-            <li key={i}>
+            <RiseItem key={i} i={i + 1}>
               <button
                 type="button"
                 onClick={() => setPick(i)}
-                className={`flex w-full items-center gap-3 rounded-[18px] border-2 bg-surface p-3 text-left text-[16px] font-black transition hover:-translate-y-px ${pick === i ? "border-coral bg-[#FFF0EA]" : "border-transparent"}`}
+                className={`flex w-full items-center gap-3 rounded-[18px] border-2 bg-surface p-3 text-left text-[16px] font-black transition hover:-translate-y-px active:scale-[.98] ${pick === i ? "border-coral bg-[#FFF0EA]" : "border-transparent"}`}
               >
                 <span className="h-[38px] w-1.5 rounded-full" style={{ background: OPTION_COLORS[i % OPTION_COLORS.length] }} />
                 <span className="flex-1">{o}</span>
-                {pick === i && <span className="grid h-6 w-6 place-items-center rounded-full bg-coral text-[12px] text-white">✓</span>}
+                {pick === i && (
+                  <motion.span initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={POP} className="grid h-6 w-6 place-items-center rounded-full bg-coral text-[12px] text-white">
+                    ✓
+                  </motion.span>
+                )}
               </button>
-            </li>
+            </RiseItem>
           ))}
         </ul>
         {error && <p className="text-center text-[14px] font-extrabold text-danger">{error}</p>}
@@ -141,18 +185,19 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
             {busy ? "Sealing…" : "Lock answer"}
           </PrimaryButton>
         </div>
-      </div>
+      </Appear>
     );
   }
 
   // Sealed, waiting for time
   if (q.status === Status.OPEN && q.me.committed && left > 0) {
     return (
-      <div className="flex flex-col gap-5">
+      <Appear key="sealed" className="flex flex-col gap-4">
         <Meta view={view} q={q} />
         {header}
+        <Pulse q={q} />
         <Note title="Your answer is sealed" body={`Nobody can see it until time is up. ${q.answerers} of ${q.charged} have answered.`} />
-      </div>
+      </Appear>
     );
   }
 
@@ -160,20 +205,20 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   if (closedForAnswers) {
     if (!q.me.committed) {
       return (
-        <div className="flex flex-col gap-5">
+        <Appear key="missed" className="flex flex-col gap-5">
           {header}
           <Note title={`Time's up. Your ${coins(view.playPrice)} coin${view.playPrice === 10n ** 18n ? "" : "s"} stayed in the pot.`} body="Next question is coming." />
-        </div>
+        </Appear>
       );
     }
     return (
-      <div className="flex flex-col gap-5">
+      <Appear key="opening" className="flex flex-col gap-5">
         {header}
         <Note
           title={q.me.revealed ? "Everyone's answers are open" : "Opening your answer…"}
           body={q.me.revealed ? `Waiting for the host to set the result. ${q.revealed} of ${q.answerers} answers open.` : "This happens on its own. Keep this tab open."}
         />
-      </div>
+      </Appear>
     );
   }
 
@@ -204,8 +249,8 @@ function Result({ view, q, now }: { view: RoomView; q: QuestionView; now: number
   }, [won, settled]);
 
   return (
-    <div className="flex flex-1 flex-col gap-3">
-      <div className="relative overflow-hidden rounded-[22px] border border-line bg-card p-5 pr-[108px]">
+    <Appear key="result" className="flex flex-1 flex-col gap-3">
+      <div className={`relative overflow-hidden rounded-[22px] border bg-card p-5 pr-[108px] ${won ? "border-[#F5DFA0] shadow-[0_12px_30px_rgba(242,183,43,.22)]" : "border-line"}`}>
         <p className="text-[13px] font-bold text-ink-2">{won ? "Nice one!" : "Not this time"}</p>
         <p ref={amount} data-testid="result-amount" className={`text-[56px] font-black leading-none tracking-[-.04em] tabular-nums ${won ? "text-green" : "text-ink-3"}`}>
           {won ? `+${coins(share)}` : `−${coins(view.playPrice)}`}
@@ -222,15 +267,17 @@ function Result({ view, q, now }: { view: RoomView; q: QuestionView; now: number
             </>
           )}
         </p>
-        <Image src="/mascot/mascot-surprised.png" alt="" width={96} height={96} className="absolute right-3 top-3 h-[88px] w-[88px] object-contain" />
+        <Image src={won ? "/mascot/mascot-happy.png" : "/mascot/mascot-oops.png"} alt="" width={96} height={96} className={`absolute right-3 top-3 h-[88px] w-[88px] object-contain ${won ? "drift" : ""}`} />
       </div>
 
       {q.picks.length > 0 && (
         <ul className="flex flex-col gap-1.5" data-testid="result-rows">
-          {q.picks.map((p) => (
-            <li
+          {q.picks.map((p, i) => (
+            <RiseItem
               key={p.address}
-              className={`flex items-center gap-2 rounded-[14px] border px-3 py-2 text-[14px] font-extrabold ${p.won ? "border-[#F5DFA0] bg-[#FFF4D6]" : "border-line bg-surface opacity-55"} ${p.me ? "outline outline-2 outline-coral" : ""}`}
+              i={i + 2}
+              opacity={p.won ? 1 : 0.55}
+              className={`flex items-center gap-2 rounded-[14px] border px-3 py-2 text-[14px] font-extrabold ${p.won ? "border-[#F5DFA0] bg-[#FFF4D6]" : "border-line bg-surface"} ${p.me ? "outline outline-2 outline-coral" : ""}`}
             >
               <Avatar address={p.address} name={nameOf(p.address)} />
               <span className="min-w-0 flex-1 truncate">
@@ -239,7 +286,7 @@ function Result({ view, q, now }: { view: RoomView; q: QuestionView; now: number
               </span>
               <span className={`shrink-0 font-bold ${p.won ? "text-ink-2" : "text-ink-3"}`}>{q.options[p.option] ?? ""}</span>
               <span className="min-w-[40px] shrink-0 text-right font-black text-green tabular-nums">{p.won ? `+${coins(share)}` : ""}</span>
-            </li>
+            </RiseItem>
           ))}
         </ul>
       )}
@@ -249,7 +296,7 @@ function Result({ view, q, now }: { view: RoomView; q: QuestionView; now: number
           Result can be disputed for <b className="tabular-nums">{disputeLeft}s</b>
         </p>
       )}
-    </div>
+    </Appear>
   );
 }
 

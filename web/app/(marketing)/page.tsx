@@ -31,16 +31,16 @@ export default function Landing() {
 
       <section className={`mx-auto grid w-full max-w-[1440px] items-center gap-8 pb-6 pt-[clamp(16px,3vw,40px)] [grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))] ${pad}`}>
         <div className="flex flex-col gap-[22px] [text-wrap:pretty]">
-          <span className="self-start whitespace-nowrap rounded-full bg-peach px-4 py-2 text-[13px] font-black">Live guessing games for community events</span>
-          <h1 className="m-0 text-[clamp(38px,5vw,72px)] font-black leading-none tracking-[-.03em]">
+          <span className="rise self-start whitespace-nowrap rounded-full bg-peach px-4 py-2 text-[13px] font-black">Live guessing games for community events</span>
+          <h1 style={{ "--i": 1 } as React.CSSProperties} className="rise m-0 text-[clamp(38px,5vw,72px)] font-black leading-none tracking-[-.03em]">
             Guess together.
             <br />
             <span className="text-coral">The pot really moves.</span>
           </h1>
-          <p className="m-0 max-w-[560px] text-[clamp(15px,1.4vw,20px)] font-bold leading-[1.5] text-ink-2">
+          <p style={{ "--i": 2 } as React.CSSProperties} className="rise m-0 max-w-[560px] text-[clamp(15px,1.4vw,20px)] font-bold leading-[1.5] text-ink-2">
             Write a question in 10 seconds. The prize goes to whoever earned it, the moment you call it. Nobody checks, nobody holds money.
           </p>
-          <div className="mt-1.5 flex flex-wrap gap-3">
+          <div style={{ "--i": 3 } as React.CSSProperties} className="rise mt-1.5 flex flex-wrap gap-3">
             <Link href="/host" className="whitespace-nowrap rounded-full bg-coral px-[34px] py-[18px] text-[17px] font-black text-white shadow-[0_10px_22px_rgba(255,107,74,.30)] transition hover:bg-coral-d active:scale-[.98]">
               Create room →
             </Link>
@@ -50,20 +50,20 @@ export default function Landing() {
           </div>
         </div>
 
-        <div className="relative mx-auto flex aspect-square w-full max-w-[600px] items-center justify-center">
+        <div style={{ "--i": 2 } as React.CSSProperties} className="rise relative mx-auto flex aspect-square w-full max-w-[600px] items-center justify-center">
           <div className="absolute h-[86%] w-[86%] translate-x-[3%] translate-y-[3%] rounded-full bg-peach" />
-          <Image src="/mascot/mascot-surprised.png" alt="Kokonad coconut mascot" width={1024} height={1024} priority className="relative h-[94%] w-[94%] object-contain" />
-          <span className="absolute left-0 top-[10%] flex items-center gap-2 whitespace-nowrap rounded-full border border-line bg-surface px-4 py-2.5 text-[15px] font-black">
+          <Image src="/mascot/mascot-surprised.png" alt="Kokonad coconut mascot" width={1024} height={1024} priority className="drift relative h-[94%] w-[94%] object-contain" />
+          <span style={{ "--i": 1 } as React.CSSProperties} className="drift absolute left-0 top-[10%] flex items-center gap-2 whitespace-nowrap rounded-full border border-line bg-surface px-4 py-2.5 text-[15px] font-black">
             <span className="h-3.5 w-3.5 rounded-full" style={{ background: "radial-gradient(circle at 35% 35%, #FFE38A, #F2B72B 55%, #D99A12)" }} />
             Pot 21
           </span>
-          <span className="absolute bottom-[12%] right-0 whitespace-nowrap rounded-full border border-line bg-surface px-4 py-2.5 text-[15px] font-black text-green">+4.2 in your balance</span>
+          <span style={{ "--i": 2 } as React.CSSProperties} className="drift absolute bottom-[12%] right-0 whitespace-nowrap rounded-full border border-line bg-surface px-4 py-2.5 text-[15px] font-black text-green">+4.2 in your balance</span>
         </div>
       </section>
 
       <section className={`mx-auto grid w-full max-w-[1440px] gap-4 pt-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))] ${pad}`}>
         {STEPS.map((s) => (
-          <div key={s.n} className="flex items-center gap-[18px] rounded-[22px] border border-line bg-card p-[22px]">
+          <div key={s.n} style={{ "--i": 3 + s.n } as React.CSSProperties} className="rise flex items-center gap-[18px] rounded-[22px] border border-line bg-card p-[22px] transition-transform duration-200 hover:-translate-y-1">
             <span className="flex h-[60px] w-[60px] flex-none items-center justify-center rounded-[18px] bg-peach">
               <Image src={s.icon} alt="" width={52} height={52} />
             </span>

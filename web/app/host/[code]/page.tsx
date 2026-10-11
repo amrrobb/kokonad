@@ -1,7 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { Status } from "@/lib/abi";
@@ -11,6 +13,11 @@ import { findRoom, readHostQuestions, readRoom, type HostQuestion } from "@/lib/
 import { useSigner } from "@/lib/signer";
 import { SignIn } from "@/components/sign-in";
 import { Avatar, coins } from "@/components/ui";
+import { Appear, PopItem, RiseItem } from "@/components/motion";
+import { AnswerDots, PotBowl } from "@/components/pot";
+
+// three.js and gsap stay out of every other page's download; the flat bowl holds the space meanwhile.
+const PotScene = dynamic(() => import("@/components/pot-scene"), { ssr: false, loading: () => <PotBowl coins={0} width={150} /> });
 
 const OPTION_COLORS = ["#7CC1F5", "#FF6B4A", "#F7C948", "#B9A2F0", "#A8E6CF", "#FFB08F"];
 /** Seconds this laptop waits past a chain deadline before acting: the newest block trails the wall clock. */
@@ -63,7 +70,7 @@ function QuestionCard(props: { room: Address; q: HostQuestion; now: number; isNe
   const live = q.status >= Status.OPEN && q.status <= Status.RESOLVED;
 
   return (
-    <li className={`rounded-[22px] border bg-card p-5 ${live ? "border-coral" : "border-line"}`} data-testid={`question-${Number(q.id) + 1}`}>
+    <RiseItem className={`rounded-[22px] border bg-card p-5 ${live ? "live-glow border-coral" : "border-line"}`} data-testid={`question-${Number(q.id) + 1}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[12px] font-bold uppercase tracking-wide text-ink-3">
@@ -92,11 +99,19 @@ function QuestionCard(props: { room: Address; q: HostQuestion; now: number; isNe
                   type="button"
                   disabled={!canResolve || busy}
                   onClick={() => setChoosing(i)}
-                  className={`flex w-full items-center gap-3 rounded-[14px] border-2 bg-surface px-3 py-2.5 text-left text-[15px] font-black transition disabled:opacity-55 ${choosing === i ? "border-coral bg-[#FFF0EA]" : "border-line hover:border-coral"}`}
+                  className={`relative flex w-full items-center gap-3 overflow-hidden rounded-[14px] border-2 bg-surface px-3 py-2.5 text-left text-[15px] font-black transition disabled:opacity-55 ${choosing === i ? "border-coral bg-[#FFF0EA]" : "border-line hover:border-coral"}`}
                 >
-                  <Swatch i={i} />
-                  <span className="flex-1">{o}</span>
-                  <span className="text-[13px] font-extrabold text-ink-3 tabular-nums">
+                  {/* How the room answered, as a bar behind the option; the count beside it is the figure. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-0 opacity-25 transition-[width] duration-500 ease-out"
+                    style={{ width: `${q.answerers > 0 ? ((q.tally[i] ?? 0) / q.answerers) * 100 : 0}%`, background: OPTION_COLORS[i % OPTION_COLORS.length] }}
+                  />
+                  <span className="relative">
+                    <Swatch i={i} />
+                  </span>
+                  <span className="relative flex-1">{o}</span>
+                  <span className="relative text-[13px] font-extrabold text-ink-3 tabular-nums">
                     {q.tally[i] ?? 0} {(q.tally[i] ?? 0) === 1 ? "answer" : "answers"}
                   </span>
                 </button>
@@ -180,7 +195,7 @@ function QuestionCard(props: { room: Address; q: HostQuestion; now: number; isNe
         )}
         {q.status === Status.VOIDED && <span>Cancelled. Everyone&apos;s play went back.</span>}
       </div>
-    </li>
+    </RiseItem>
   );
 }
 
@@ -251,8 +266,19 @@ function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void;
           {thinking ? "Writing…" : "Write them for me"}
         </Btn>
       </div>
+      {thinking && (
+        <div className="mt-3 flex flex-col gap-2" aria-hidden="true" data-testid="drafting">
+          {Array.from({ length: Math.min(count, 4) }, (_, i) => (
+            <div key={i} className="shimmer h-[46px] rounded-[14px]" style={{ opacity: 1 - i * 0.18 }} />
+          ))}
+        </div>
+      )}
       {error && <p className="mt-2 text-[13px] font-extrabold text-danger">{error}</p>}
-      {!error && <p className="mt-2 text-[12px] font-bold text-ink-3">You&apos;ll see every draft before anything is sealed. Remove the ones you don&apos;t like.</p>}
+      {!error && (
+        <p className="mt-2 text-[12px] font-bold text-ink-3">
+          {thinking ? "Thinking of things nobody in the room knows yet. This takes 10 to 25 seconds." : "You'll see every draft before anything is sealed. Remove the ones you don't like."}
+        </p>
+      )}
     </div>
   );
 }
@@ -283,7 +309,7 @@ function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; bus
       {list.length > 0 && (
         <ol className="mt-3 flex flex-col gap-2" data-testid="unsealed-list">
           {list.map((q, i) => (
-            <li key={i} className="flex items-center gap-3 rounded-[14px] border border-line bg-surface px-3 py-2 text-[14px] font-extrabold">
+            <RiseItem key={i} i={i} className="flex items-center gap-3 rounded-[14px] border border-line bg-surface px-3 py-2 text-[14px] font-extrabold">
               <span className="text-ink-3 tabular-nums">{i + 1}.</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{q.text}</span>
@@ -292,7 +318,7 @@ function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; bus
               <button type="button" onClick={() => setList(list.filter((_, j) => j !== i))} className="shrink-0 text-[13px] font-black text-coral" aria-label={`Remove question ${i + 1}`}>
                 Remove
               </button>
-            </li>
+            </RiseItem>
           ))}
         </ol>
       )}
@@ -340,6 +366,106 @@ function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; bus
         </div>
       </div>
       <p className="mt-2 text-[12px] font-bold text-ink-3">Sealed questions can&apos;t be changed later.</p>
+    </section>
+  );
+}
+
+/** The way in, three ways: the code to read out, a picture to point a phone at, a link to paste in the group chat. */
+function JoinLink({ code }: { code: string }) {
+  const [origin] = useState(() => (typeof window === "undefined" ? "" : window.location.origin));
+  const [copied, setCopied] = useState(false);
+  if (!origin) return null;
+  const url = `${origin}/r/${code}`;
+  return (
+    <>
+      <div className="mx-auto mt-3 w-fit rounded-[14px] border border-line bg-white p-2" data-testid="join-qr" data-url={url}>
+        <QRCodeSVG value={url} size={128} fgColor="#3B1F14" bgColor="#FFFFFF" level="M" />
+      </div>
+      <p className="mt-2 break-all text-[12px] font-bold text-ink-3">
+        {origin.replace(/^https?:\/\//, "")}/r/{code}
+      </p>
+      <button
+        type="button"
+        className="mt-1 text-[12px] font-black text-coral"
+        onClick={() => {
+          void navigator.clipboard
+            ?.writeText(url)
+            .then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1800);
+            })
+            .catch(() => {});
+        }}
+      >
+        {copied ? "Link copied" : "Copy link"}
+      </button>
+    </>
+  );
+}
+
+/**
+ * The top of the host's screen: what is happening right now, in one line, and the pot. This is the part
+ * of the laptop people look at when it is on a projector, so it always says the next thing to do.
+ */
+function Stage(props: { code: string; list: HostQuestion[]; people: number; seats: number | null; inFlight?: HostQuestion; nextId?: bigint; now: number }) {
+  const { code, list, people, seats, inFlight, nextId, now } = props;
+  let eyebrow: string;
+  let title: string;
+  let sub: string;
+  if (inFlight && inFlight.status === Status.OPEN) {
+    eyebrow = "Live";
+    title = `Question ${Number(inFlight.id) + 1} is live.`;
+    sub = `${Math.max(0, inFlight.lockAt - now)} s to answer.`;
+  } else if (inFlight && inFlight.status !== Status.RESOLVED) {
+    eyebrow = "Time's up";
+    title = "Which answer was right?";
+    sub = `Pick it on question ${Number(inFlight.id) + 1} below. The pot goes to whoever chose it.`;
+  } else if (inFlight) {
+    eyebrow = "Result set";
+    title = "Winners are being paid.";
+    sub = "It happens on its own once nobody can disagree any more.";
+  } else if (list.length === 0) {
+    eyebrow = "Step 1";
+    title = "Write tonight's questions.";
+    sub = "Type them, or say what the event is about and take a first draft.";
+  } else if (people === 0) {
+    eyebrow = "Step 2";
+    title = "Waiting for players.";
+    sub = `Show them the code ${code}${seats ? `. ${seats} ${seats === 1 ? "seat" : "seats"} in this room.` : "."}`;
+  } else if (nextId !== undefined) {
+    eyebrow = "Ready";
+    title = `${people} in the room. Start when you like.`;
+    sub = `Question ${Number(nextId) + 1} is next.`;
+  } else {
+    eyebrow = "All played";
+    title = "That was every question.";
+    sub = "Write more below to keep the room going.";
+  }
+  const potCoins = inFlight ? Number(inFlight.pot / 10n ** 18n) : 0;
+
+  return (
+    <section className="mb-5 flex items-center gap-5 overflow-hidden rounded-[22px] border border-line p-5 lg:p-6" style={{ background: "linear-gradient(120deg, #FFF9F3 0%, #FFEBDD 100%)" }} data-testid="stage">
+      <div className="min-w-0 flex-1">
+        <Appear key={title}>
+          <p className="flex items-center gap-2 text-[12px] font-black uppercase tracking-wide text-coral-d">
+            {eyebrow === "Live" && <span className="live-glow inline-block h-2.5 w-2.5 rounded-full bg-coral" />}
+            {eyebrow}
+          </p>
+          <h1 className="mt-1 text-[clamp(22px,2.4vw,34px)] font-black leading-[1.1] tracking-[-.02em]">{title}</h1>
+        </Appear>
+        <p className="mt-1.5 text-[15px] font-extrabold text-ink-2 tabular-nums">{sub}</p>
+        {inFlight && inFlight.status === Status.OPEN && (
+          <div className="mt-3">
+            <AnswerDots answered={inFlight.answerers} of={inFlight.charged} />
+          </div>
+        )}
+      </div>
+      <div className="hidden shrink-0 flex-col items-center sm:flex">
+        <div className="h-[170px] w-[250px]">
+          <PotScene coins={potCoins} />
+        </div>
+        <p className="text-[12px] font-extrabold text-ink-3 tabular-nums">{inFlight ? `In the pot: ${coins(inFlight.pot)}` : "The pot fills when a question opens."}</p>
+      </div>
     </section>
   );
 }
@@ -406,6 +532,10 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
   const inFlight = list.find((q) => q.status >= Status.OPEN && q.status <= Status.RESOLVED);
   const nextId = list.find((q) => q.status === Status.DRAFT)?.id;
   const blocked = inFlight ? `Question ${Number(inFlight.id) + 1} finishes first.` : view.people.length === 0 ? "Wait for someone to join." : null;
+  const standings = view.people.map((p, i) => ({ ...p, i })).sort((a, b) => (a.coins === b.coins ? a.i - b.i : a.coins > b.coins ? -1 : 1));
+  const leading = standings.length > 1 && standings[0]!.coins > standings[1]!.coins;
+  // Sponsored rooms seat as many people as the budget can give a starting deposit to; both figures are from the chain.
+  const seats = view.sponsored && view.startingDeposit > 0n ? view.people.length + Number((qsQ.data?.budget ?? 0n) / view.startingDeposit) : null;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -414,29 +544,33 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
         <div className="rounded-[22px] border border-line bg-surface p-4 text-center">
           <p className="text-[12px] font-bold text-ink-3">Room code</p>
           <p className="text-[34px] font-black tracking-[.16em]">{code}</p>
-          <p className="text-[12px] font-bold text-ink-3">Join at /r/{code}</p>
+          <JoinLink code={code} />
         </div>
         <div className="text-[14px] font-extrabold text-ink-2">
           <p>
             Budget left <b className="float-right text-ink tabular-nums">{coins(qsQ.data?.budget ?? 0n)}</b>
           </p>
           <p className="mt-1">
-            In the room <b className="float-right text-ink tabular-nums">{view.people.length}</b>
+            In the room <b className="float-right text-ink tabular-nums">{seats ? `${view.people.length} of ${seats}` : view.people.length}</b>
           </p>
         </div>
-        <ul className="flex flex-col gap-1.5">
-          {view.people.map((p) => (
-            <li key={p.address} className="flex items-center gap-2 text-[13px] font-extrabold">
+        {/* Standings: most coins first, joining order between equals. Rows glide when the order changes. */}
+        <ul className="flex flex-col gap-1.5" data-testid="standings">
+          {standings.map((p, i) => (
+            <PopItem key={p.address} layout className={`flex origin-left items-center gap-2 rounded-full py-0.5 pl-0.5 pr-3 text-[13px] font-extrabold ${i === 0 && leading ? "bg-[#FFF4D6]" : ""}`}>
               <Avatar address={p.address} name={p.name} />
-              {p.name}
-            </li>
+              <span className="min-w-0 flex-1 truncate">{p.name}</span>
+              <span className="tabular-nums text-ink-2">{coins(p.coins)}</span>
+            </PopItem>
           ))}
         </ul>
+        {view.people.length === 0 && <p className="text-[13px] font-bold text-ink-3">Nobody yet. They show up here the moment they join.</p>}
         <p className="mt-auto rounded-[14px] bg-peach p-3 text-[12px] font-bold text-ink-2">Keep this tab open: it opens questions and pays out winners for you.</p>
       </aside>
       <main className="min-w-0 flex-1 p-5 lg:p-8">
         <p className="mb-4 rounded-[14px] bg-bg-2 px-4 py-2 text-[13px] font-bold text-ink-3 lg:hidden">Best on a laptop.</p>
         {(busy || error) && <p className={`mb-4 rounded-[14px] px-4 py-3 font-extrabold ${error ? "bg-[#FDE7E2] text-danger" : "bg-peach"}`}>{error ?? `${busy}…`}</p>}
+        <Stage code={code} list={list} people={view.people.length} seats={seats} inFlight={inFlight} nextId={nextId} now={now} />
         <Builder busy={!!busy} onSeal={(items) => act(items.length === 1 ? "Sealing the question" : `Sealing ${items.length} questions`, () => sealQuestions(room, items))} />
         {/* In playing order: the next thing to do is always the first unfinished card. */}
         <ol className="mt-6 flex flex-col gap-4">

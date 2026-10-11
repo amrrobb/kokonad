@@ -18,3 +18,33 @@
   --color-danger: #d8553f;
   --font-sans: var(--font-nunito), "Avenir Next Rounded", "Segoe UI", system-ui, sans-serif;
 }
+
+/* Motion that needs no script (DESIGN.md §4): the landing page is rendered on the server, and a page
+   that waits for JavaScript before it shows its headline is a slower page. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+@keyframes live-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 74, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 107, 74, 0.14); }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.rise { animation: rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.drift { animation: drift 5s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.3s); }
+.live-glow { animation: live-glow 2.2s ease-in-out infinite; }
+.shimmer {
+  background: linear-gradient(90deg, #f6e9db 25%, #fff6ec 50%, #f6e9db 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise, .drift, .live-glow, .shimmer { animation: none; }
+}

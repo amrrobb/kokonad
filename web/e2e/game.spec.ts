@@ -33,6 +33,9 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
   await host.page.waitForURL(/\/host\/[A-Z0-9]{6}$/, { timeout: 90_000 });
   code = host.page.url().split("/").pop()!;
   await expect(host.page.getByRole("heading", { name: "Write your questions" })).toBeVisible();
+  // The top of the screen says what to do next, and the picture to scan leads to this room and nowhere else.
+  await expect(host.page.getByTestId("stage")).toContainText("Write tonight's questions.");
+  await expect(host.page.getByTestId("join-qr")).toHaveAttribute("data-url", new RegExp(`^http://localhost:\\d+/r/${code}$`));
 
   // The host writes the whole game up front and seals it in one go, before anyone has joined.
   await prepareQuestions(host, [
@@ -45,6 +48,8 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
   await expect(hostCard(host, 1).getByText("Wait for someone to join.")).toBeVisible();
   await expect(hostCard(host, 2).getByText("Up next after question 1.")).toBeVisible();
   await expect(hostCard(host, 2).getByRole("button", { name: /Open question/ })).toHaveCount(0);
+  await expect(host.page.getByTestId("stage")).toContainText("Waiting for players.");
+  await expect(host.page.locator("aside").getByText("In the room")).toContainText("0 of 3"); // budget 60 / deposit 20
   await shot(host, info, "1-room");
 
   // The code on the screen is the code the chain knows, and the budget is really there.
@@ -77,7 +82,7 @@ test("three people join from their own devices and get their coins", async ({ br
 
   // Host sees all three, and the budget is spent.
   // (an avatar with the initials sits in the same row, so match the row, not the exact text)
-  await expect(host.page.locator("aside ul li")).toHaveText([/Eka$/, /Fajar$/, /Gita$/]);
+  await expect(host.page.locator("aside ul li")).toHaveText([/Eka\s*20$/, /Fajar\s*20$/, /Gita\s*20$/]);
   await expect(host.page.locator("aside").getByText("Budget left")).toContainText("0");
 
   const l = await ledger(room);
@@ -106,6 +111,10 @@ test("question 1: answers stay sealed, open on their own, and the right person i
     await expect(balancePill(t.page)).toHaveText("19"); // one play went into the pot
   }
   await expect(eka.page.getByText("pot 3")).toBeVisible();
+  // The pictures agree with the figures: three coins in the bowl, nobody sealed yet, a clock running.
+  await expect(eka.page.getByTestId("pot-bowl")).toHaveAttribute("data-coins", "3");
+  await expect(eka.page.getByTestId("answer-dots")).toHaveAttribute("data-answered", "0");
+  await expect(eka.page.getByTestId("timer")).toBeVisible();
   await expectFits(eka.page, "question 360");
   await shot(eka, info, "3-question");
 
@@ -113,6 +122,17 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await pickAndLock(fajar, "Team Kopi");
   await expectPlainLanguage(eka.page, "sealed");
   await expect(host.page.getByText("2 of 3 answered")).toBeVisible();
+  await expect(fajar.page.getByTestId("answer-dots")).toHaveAttribute("data-answered", "2"); // dots, never choices
+  await expect(host.page.getByTestId("stage").getByTestId("answer-dots")).toHaveAttribute("data-answered", "2");
+  // The host's 3D pot holds the chain's pot. Where the browser can draw it, the drawing surface must be
+  // exactly the box times the pixel ratio: anything else is a picture squeezed into a corner.
+  const scene = host.page.getByTestId("pot-scene");
+  await expect(scene).toHaveAttribute("data-coins", "3");
+  const surface = await scene.evaluate((el) => {
+    const c = el.querySelector("canvas");
+    return { mode: el.getAttribute("data-mode"), ok: !c || (c.width === Math.round(el.clientWidth * Math.min(devicePixelRatio, 2)) && c.height === Math.round(el.clientHeight * Math.min(devicePixelRatio, 2)) && c.width > 0) };
+  });
+  expect(surface.ok, `pot scene surface (${surface.mode})`).toBe(true);
 
   // While the question is live the chain holds only commitments: no answer is readable yet.
   const live = await pub.readContract({ address: room, abi: roomAbi, functionName: "getQuestion", args: [0n] });
@@ -179,6 +199,8 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await expect(balancePill(eka.page)).toHaveText("22");
   await expect(balancePill(fajar.page)).toHaveText("19");
   await expect(balancePill(gita.page)).toHaveText("19");
+  // The host's standings are the same figures, winner on top.
+  await expect(host.page.getByTestId("standings").locator("li")).toHaveText([/Eka\s*22$/, /Fajar\s*19$/, /Gita\s*19$/]);
   await shot(eka, info, "6-paid");
   await shot(host, info, "6-paid");
 

@@ -55,7 +55,8 @@ export interface RoomView {
   closed: boolean;
   /** deposit: coins still in the room; held: coins paid out to the account. Same block. */
   me: { joined: boolean; deposit: bigint; held: bigint };
-  people: Array<{ address: Address; name: string }>;
+  /** In joining order. `coins` is what the person has right now: deposit still in the room plus winnings paid out, same block as the rest. */
+  people: Array<{ address: Address; name: string; coins: bigint }>;
 }
 
 export async function readRoom(address: Address, me: Address): Promise<RoomView> {
@@ -70,7 +71,11 @@ async function readRoomAt(address: Address, me: Address, blockNumber: bigint): P
     r("host"), r("sponsored"), r("startingDeposit"), r("playPrice"), r("closed"), r("joined", [me]), r("participants", [me]), r("getParticipants"),
   ]);
   const addresses = list as Address[];
-  const names = await Promise.all(addresses.map((a) => r("displayNames", [a]) as Promise<string>));
+  const [names, deposits, paidOut] = await Promise.all([
+    Promise.all(addresses.map((a) => r("displayNames", [a]) as Promise<string>)),
+    Promise.all(addresses.map((a) => r("participants", [a]) as Promise<readonly [bigint, boolean, number]>)),
+    Promise.all(addresses.map((a) => publicClient.readContract({ address: contracts.KokoToken, abi: tokenAbi, functionName: "balanceOf", args: [a], blockNumber }))),
+  ]);
   return {
     address,
     host: host as Address,
@@ -79,7 +84,7 @@ async function readRoomAt(address: Address, me: Address, blockNumber: bigint): P
     playPrice: playPrice as bigint,
     closed: closed as boolean,
     me: { joined: joined as boolean, deposit: (mine as readonly [bigint, boolean, number])[0], held: await coinsHeld },
-    people: addresses.map((a, i) => ({ address: a, name: names[i] ?? "" })),
+    people: addresses.map((a, i) => ({ address: a, name: names[i] ?? "", coins: (deposits[i]?.[0] ?? 0n) + (paidOut[i] ?? 0n) })),
   };
 }
 
@@ -90,6 +95,8 @@ export interface QuestionView {
   status: number; // effective, from phase()
   pot: bigint;
   charged: number;
+  /** When answering opened and when it closes, chain time. Together they are the length of the timer. */
+  openAt: number;
   lockAt: number;
   disputeUntil: number;
   outcome: bigint;
@@ -115,7 +122,7 @@ async function readLatestQuestionAt(address: Address, me: Address, blockNumber: 
   const count = (await r("questionCount")) as bigint;
   for (let id = count - 1n; id >= 0n; id--) {
     const q = (await r("getQuestion", [id])) as {
-      text: string; options: readonly string[]; pot: bigint; charged: number; lockAt: bigint; disputeUntil: bigint;
+      text: string; options: readonly string[]; pot: bigint; charged: number; openAt: bigint; lockAt: bigint; disputeUntil: bigint;
       status: number; outcome: `0x${string}`; answerers: number; revealed: number;
     };
     if (q.status === 0) continue; // DRAFT: sealed, not opened yet
@@ -143,6 +150,7 @@ async function readLatestQuestionAt(address: Address, me: Address, blockNumber: 
       status: phase as number,
       pot: q.pot,
       charged: q.charged,
+      openAt: Number(q.openAt),
       lockAt: Number(q.lockAt),
       disputeUntil: Number(q.disputeUntil),
       outcome: BigInt(q.outcome),

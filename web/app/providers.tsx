@@ -9,6 +9,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Address } from "viem";
 import { MONAD_TESTNET_ID, monadTestnet, monadTestnetForDynamic } from "@/lib/chain";
 import { setSignedInSigner } from "@/lib/signer";
+import { MotionRoot } from "@/components/motion";
 
 const wagmiConfig = createConfig({
   chains: [monadTestnet],
@@ -61,7 +62,9 @@ export function Providers({ children }: { children: ReactNode }) {
     // renders (the Mera salt part of /spike), so the page stays useful.
     return (
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
+        <WagmiProvider config={wagmiConfig}>
+          <MotionRoot>{children}</MotionRoot>
+        </WagmiProvider>
       </QueryClientProvider>
     );
   }
@@ -81,7 +84,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <DynamicWagmiConnector>
             <SignerBridge />
-            {children}
+            <MotionRoot>{children}</MotionRoot>
           </DynamicWagmiConnector>
         </QueryClientProvider>
       </WagmiProvider>
