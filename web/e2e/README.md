@@ -26,6 +26,7 @@ and compares: balances, winners, outcome, and that every coin the host funded is
 | `join.spec.ts` | `/join` code input rules; unknown code → "Room not found." |
 | `duel.spec.ts` | two accounts head to head over three rounds: winner takes the pot, an even split, a decider; the next question is not offered until the current one is paid; final standings are zero-sum on the chain |
 | `draft.spec.ts` | host asks for a first draft from a one-line brief (the model is a route stub), drops one, seals the rest; exactly the kept ones reach the chain; with no writer configured only the manual form shows |
+| `draft-live.spec.ts` | public target only, with `E2E_DRAFT_KEY`: the real model on the deployed site writes a game from a brief, the host drops one and seals the rest on the chain |
 | `game.spec.ts` | create room → 3 join → 4th refused in plain words → question with a winner, a loser and a no-show → dispute wait → pay out → a cancelled question with refunds; a non-host tab cannot run the room; plain-language check on every participant screen |
 
 Not covered: Dynamic sign-in, Mera salts, the indexer, and anything that only happens on the real network (rate limits,
@@ -35,6 +36,8 @@ Monad's 10 MON reserve, load-balanced RPC lag).
 
 ```sh
 E2E_TARGET=public E2E_VIDEO=1 pnpm e2e duel.spec.ts   # https://kokonad.robbyn.xyz and its relayer, real testnet MON
+
+E2E_TARGET=public E2E_DRAFT_KEY=<DRAFT_BYPASS_TOKEN> pnpm e2e draft-live.spec.ts   # one real model call, one room
 ```
 
 Nothing is started or built; the suite plays the deployed site the way a judge would. Stop any local relayer
