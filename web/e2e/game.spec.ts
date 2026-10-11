@@ -15,11 +15,13 @@ let host: Tab;
 let eka: Tab; // phone, will be right
 let fajar: Tab; // laptop-width, will be wrong
 let gita: Tab; // phone, sits the first question out
+let big: Tab; // the projector: the room's view, no controls, no account
+const mood = (t: Tab) => t.page.getByTestId("mascot").first();
 let code: string;
 let room: Address;
 
 test.afterAll(async () => {
-  for (const t of [host, eka, fajar, gita]) await t?.page.context().close();
+  for (const t of [host, eka, fajar, gita, big]) await t?.page.context().close();
 });
 
 test("host creates a sponsored room for three people", async ({ browser }, info) => {
@@ -54,6 +56,19 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
   await expect(host.page.getByRole("heading", { name: "Write your questions" })).toHaveCount(0);
   await expect(host.page.locator("aside").getByText("In the room")).toContainText("0 of 3"); // budget 60 / deposit 20
   await shot(host, info, "1-room");
+  // Every screen carries the mark, and the host's coconut is asleep while the room is empty.
+  await expect(host.page.getByTestId("logo")).toBeVisible();
+  await expect(host.page.getByTestId("stage").getByTestId("mascot")).toHaveAttribute("data-mood", "sleepy");
+
+  // The big screen needs no account: it shows the code, a picture to scan that leads to this room, and nobody yet.
+  big = await openTab(browser, "big-screen", 1280, 720);
+  await big.page.goto(`/host/${code}/screen`);
+  await expect(big.page.getByTestId("screen-code")).toHaveText(code);
+  await expect(big.page.getByTestId("screen-qr")).toHaveAttribute("data-url", new RegExp(`^http://localhost:\\d+/r/${code}$`));
+  await expect(big.page.getByTestId("screen-count")).toHaveText("0 in the room");
+  await expect(big.page.getByRole("button")).toHaveCount(0); // nothing to press
+  await expectFits(big.page, "big screen waiting");
+  await shot(big, info, "1-waiting");
 
   // The code on the screen is the code the chain knows, and the budget is really there.
   room = await roomAddress(code);
@@ -81,7 +96,12 @@ test("three people join from their own devices and get their coins", async ({ br
   await expect(eka.page.getByRole("heading", { name: "Hi, Eka." })).toBeVisible();
   await expect(eka.page.getByText("In the room (3)")).toBeVisible();
   await expectFits(eka.page, "lobby 360");
+  await expect(eka.page.getByTestId("logo")).toBeVisible();
+  await expect(mood(eka)).toHaveAttribute("data-mood", "sleepy"); // waiting for the host
   await shot(eka, info, "2-lobby");
+  await expect(big.page.getByTestId("screen-count")).toHaveText("3 in the room");
+  await expectPlainLanguage(big.page, "big screen waiting");
+  await shot(big, info, "2-three-joined");
 
   // Host sees all three, and the budget is spent.
   // (an avatar with the initials sits in the same row, so match the row, not the exact text)
@@ -120,11 +140,18 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await expect(eka.page.getByTestId("timer")).toBeVisible();
   await expectFits(eka.page, "question 360");
   await shot(eka, info, "3-question");
+  // The room reads the question and the clock off the big screen; it never shows who picked what.
+  await expect(big.page.getByRole("heading", { name: "Who wins tonight's final?" })).toBeVisible();
+  await expect(big.page.getByTestId("screen-clock")).toBeVisible();
+  await expectFits(big.page, "big screen live");
+  await shot(big, info, "3-live");
 
   await pickAndLock(eka, "Team Sate");
   await pickAndLock(fajar, "Team Kopi");
   await expectPlainLanguage(eka.page, "sealed");
   await expect(host.page.getByText("2 of 3 answered")).toBeVisible();
+  await expect(big.page.getByText("2 of 3 sealed")).toBeVisible();
+  await expectPlainLanguage(big.page, "big screen live");
   await expect(fajar.page.getByTestId("answer-dots")).toHaveAttribute("data-answered", "2"); // dots, never choices
   await expect(host.page.getByTestId("stage").getByTestId("answer-dots")).toHaveAttribute("data-answered", "2");
   // The host's 3D pot holds the chain's pot. Where the browser can draw it, the drawing surface must be
@@ -149,7 +176,12 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await expect(gita.page.getByRole("heading", { name: "Time's up. Your 1 coin stayed in the pot." })).toBeVisible({ timeout: 40_000 });
   await expect(host.page.getByText("2 of 2 answers open")).toBeVisible({ timeout: 60_000 });
   await expect(eka.page.getByRole("heading", { name: "Everyone's answers are open" })).toBeVisible();
+  await expect(mood(gita)).toHaveAttribute("data-mood", "sleepy"); // sat it out
+  await shot(gita, info, "4-sat-out");
+  await shot(eka, info, "4-answers-open");
   await shot(host, info, "4-answers-open");
+  await expect(big.page.getByRole("heading", { name: "Time's up!" })).toBeVisible();
+  await shot(big, info, "4-times-up");
 
   // The host sees how the opened answers split, picks one, and can back out before confirming.
   const card = hostCard(host, 1);
@@ -173,6 +205,13 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await expect(resultRows(fajar.page)).toHaveText([/^EKEkaTeam Sate\+3$/, /^FAFajar \(you\)Team Kopi$/]);
   await expect(resultRows(gita.page)).toHaveText([/^EKEkaTeam Sate\+3$/, /^FAFajarTeam Kopi$/]);
   await expectFits(eka.page, "result 360");
+  // The coconut is happy for the winner and sorry for the loser; the big screen says which answer was right and what the pot was.
+  await expect(mood(eka)).toHaveAttribute("data-mood", "happy");
+  await expect(mood(fajar)).toHaveAttribute("data-mood", "oops");
+  await expect(big.page.getByTestId("screen-pot")).toHaveText("3");
+  await expect(big.page.getByText("going to 1 winner")).toBeVisible();
+  await expectPlainLanguage(big.page, "big screen result");
+  await shot(big, info, "5-result");
   // Nothing flies yet: the coins have not moved on the chain.
   await expect(flyingCoins(eka.page)).toHaveCount(0);
   for (const t of [eka, fajar, gita]) await expectPlainLanguage(t.page, `${t.label} result`);
@@ -209,6 +248,10 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   await expect(host.page.getByTestId("standings").locator("li")).toHaveText([/Eka\s*22$/, /Fajar\s*19$/, /Gita\s*19$/]);
   await shot(eka, info, "6-paid");
   await shot(host, info, "6-paid");
+  // Once the result has had its moment, the big screen shows who is ahead: the same figures as the chain.
+  await expect(big.page.getByTestId("screen-standings").locator("li")).toHaveText([/Eka\s*22$/, /Fajar\s*19$/, /Gita\s*19$/], { timeout: 40_000 });
+  await expectFits(big.page, "big screen standings");
+  await shot(big, info, "6-standings");
 
   // The chain agrees with every screen.
   const q = await pub.readContract({ address: room, abi: roomAbi, functionName: "getQuestion", args: [0n] });

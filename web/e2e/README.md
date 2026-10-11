@@ -27,7 +27,7 @@ and compares: balances, winners, outcome, and that every coin the host funded is
 | `duel.spec.ts` | two accounts head to head over three rounds: winner takes the pot, an even split, a decider; the next question is not offered until the current one is paid; final standings are zero-sum on the chain |
 | `draft.spec.ts` | host asks for a first draft from a one-line brief (the model is a route stub), drops one, seals the rest; exactly the kept ones reach the chain; with no writer configured only the manual form shows |
 | `draft-live.spec.ts` | public target only, with `E2E_DRAFT_KEY`: the real model on the deployed site writes a game from a brief, the host drops one and seals the rest on the chain |
-| `game.spec.ts` | create room → 3 join → 4th refused in plain words → question with a winner, a loser and a no-show → dispute wait → pay out → a cancelled question with refunds; a non-host tab cannot run the room; plain-language check on every participant screen |
+| `game.spec.ts` | create room → 3 join → 4th refused in plain words → question with a winner, a loser and a no-show → dispute wait → pay out → a cancelled question with refunds; a non-host tab cannot run the room; plain-language check on every participant screen; the big screen (`/host/<code>/screen`) follows the same game with no account: code and QR, people joining, the live question and clock, the result, then standings equal to the chain; the logo is on every screen and the mascot's pose matches the moment |
 
 Not covered: Dynamic sign-in, Mera salts, the indexer, and anything that only happens on the real network (rate limits,
 Monad's 10 MON reserve, load-balanced RPC lag).
