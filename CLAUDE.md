@@ -41,7 +41,7 @@ See ARCHITECTURE §11. Don't add top-level folders without a reason written in t
 - One responsive app. Routes: `/`, `/r/[code]`, `/host/[code]`, `/host/[code]/screen`.
 - Design tokens from PRD §8.2 (light warm theme, coral primary, gold coins, Nunito). Reference `docs/mockup-v2.html` for layout and motion; match it, don't reinvent.
 - Participant screen: one screen, one action, primary button at the bottom. Timer, pot bowl, and "X has answered" feed update without user action.
-- Exactly one animated moment: coins flying to the balance on a win. Nothing else bounces.
+- Motion (rule changed 11 Oct 2026, see `docs/DESIGN.md` §4): motion explains state changes (join, seal, pot, reveal, result); the coin flight stays the only celebration; money digits are never tweened; enter animations only, no exit animations on pressable things; three.js on host screens only, never on `/r/[code]`; everything honours `prefers-reduced-motion`. `motion` for React screens, `three` + `gsap` for the host's 3D pot bowl, CSS keyframes on the landing page; nothing else.
 - Mobile-first; test at 360px width. Host screens at ≥ 1024px.
 - Data flow: chain events → Envio → React Query. WS only triggers refetch/animations.
 

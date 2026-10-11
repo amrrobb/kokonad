@@ -85,14 +85,15 @@ Numbers that change (pot, balance, timer, counts) use `font-variant-numeric: tab
 | **Sheet** | bottom sheet on phone, centered modal on desktop, 22px top radius | login, confirm dispute, error |
 
 ## 4. Motion
-Exactly one celebratory animation in the whole app: **coins flying** from the result number to the balance pill on a win (10 coins, 700–1300 ms, cubic-bezier(.2,.7,.2,1)). Everything else is functional:
-- Timer ring: linear per second, no easing.
-- Pot fill: 300 ms ease.
-- Feed line: 350 ms fade-up.
-- Option select: border color 120 ms.
-- Distribution bars: width 500 ms ease.
-- Screen transitions: none (instant). The state change is the transition.
-- `prefers-reduced-motion`: coins become a 200 ms number tick; everything else off.
+Changed 11 Oct 2026 at the builder's request: a community game has to feel alive, so motion is no longer limited to one moment. The rules that replace "nothing else bounces":
+
+- **Motion explains a change of state.** Someone joins, an answer is sealed, the pot grows, answers open, the result lands. If nothing changed, nothing moves (the one exception is the slow idle turn of the host's pot bowl).
+- **One celebration stays one.** Coins flying from the result number to the balance pill on a win (10 coins, 700–1300 ms, cubic-bezier(.2,.7,.2,1)) is still the only celebratory animation. `components/coins.ts` is not to be restyled casually; the e2e suite counts its coins.
+- **Money figures are never tweened.** A number that stands for coins shows the chain's value or nothing (CLAUDE.md rule 1). Bars, bowls and rings may ease; digits may not count up.
+- **Enter, don't linger.** Screens and list items animate in (150–350 ms, ease-out, a soft spring for people and coins). No exit animations on anything a test or a person can press: a leaving node that is still mounted is a second button.
+- **3D is for the host's screen only.** The pot bowl (`components/pot-scene.tsx`, three.js) is loaded on demand on `/host/[code]`. Participant phones never download or run it; they get the flat bowl.
+- **`prefers-reduced-motion`** is honoured everywhere: movement is dropped, fades and progress (timer ring) stay, coins become a 200 ms tick, the 3D bowl stops turning.
+- Libraries, one job each: `motion` for React screens, `three` for the bowl, `gsap` for tweening the bowl's three.js objects (which are not React elements). Plain CSS keyframes for the server-rendered landing page. Nothing else.
 
 ## 5. Copy rules
 - English, sentence case, short. Buttons are verbs: "Enter room", "Grab 20 coins", "Lock answer", "Set result", "Open question 2", "Share recap".
