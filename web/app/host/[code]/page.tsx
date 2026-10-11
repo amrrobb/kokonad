@@ -277,7 +277,7 @@ function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void;
       {error && <p className="mt-2 text-[13px] font-extrabold text-danger">{error}</p>}
       {!error && (
         <p className="mt-2 text-[12px] font-bold text-ink-3">
-          {thinking ? "Thinking of things nobody in the room knows yet. This takes 10 to 25 seconds." : "You'll see every draft before anything is sealed. Remove the ones you don't like."}
+          {thinking ? "Thinking of things nobody in the room knows yet. This takes 10 to 25 seconds." : "You'll see every draft before anything is sealed. Remove the ones you don't like. You pick the right answer after time is up, so keep only what you can settle in the room."}
         </p>
       )}
     </div>
