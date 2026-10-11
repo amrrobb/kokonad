@@ -35,6 +35,10 @@ test("host drafts questions from a one-line brief, drops one, seals the rest", a
 
   const drafter = host.page.getByTestId("drafter");
   await expect(drafter).toBeVisible();
+  // An empty brief is answered in words, not with a dead button, and no call leaves the page.
+  await drafter.getByRole("button", { name: "Write them for me" }).click();
+  await expect(drafter).toContainText("Say a few words about the event first");
+  expect(asked).toEqual([]);
   await drafter.getByLabel("What is the event about?").fill("Jogja dev meetup, three lightning talks and pizza");
   await drafter.getByLabel("How many questions").selectOption("3");
   await drafter.getByLabel("Language").selectOption("Indonesian");

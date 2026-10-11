@@ -197,10 +197,18 @@ function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void;
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const topicRef = useRef<HTMLInputElement>(null);
   if (!available.data) return null;
 
   function draft() {
-    if (!topic.trim() || thinking) return;
+    if (thinking) return;
+    // The button stays live so an empty brief gets an answer instead of a dead click: the example in
+    // the box is only a placeholder, and more than one host has read it as text already typed.
+    if (!topic.trim()) {
+      setError("Say a few words about the event first, then ask again.");
+      topicRef.current?.focus();
+      return;
+    }
     setThinking(true);
     setError(null);
     draftQuestions(topic.trim(), count, language)
@@ -214,10 +222,14 @@ function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void;
       <p className="text-[14px] font-black">Short on time? Say what tonight is about and get a first draft.</p>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <input
+          ref={topicRef}
           value={topic}
-          onChange={(e) => setTopic(e.target.value.slice(0, 400))}
+          onChange={(e) => {
+            setTopic(e.target.value.slice(0, 400));
+            if (error) setError(null);
+          }}
           onKeyDown={(e) => e.key === "Enter" && draft()}
-          placeholder="Jogja dev meetup: 3 lightning talks, pizza, a demo vote at the end"
+          placeholder="e.g. Jogja dev meetup: 3 lightning talks, pizza, a demo vote at the end"
           aria-label="What is the event about?"
           className="min-w-0 flex-1 rounded-[14px] border-2 border-line bg-surface px-3 py-2 text-[15px] font-extrabold outline-none focus:border-coral"
         />
@@ -235,7 +247,7 @@ function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void;
             </option>
           ))}
         </select>
-        <Btn onClick={draft} disabled={!topic.trim() || thinking || busy}>
+        <Btn onClick={draft} disabled={thinking || busy}>
           {thinking ? "Writing…" : "Write them for me"}
         </Btn>
       </div>
