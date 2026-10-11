@@ -61,8 +61,12 @@ export function userPrompt(req: DraftRequest): string {
 
 /** Pulls the first JSON object out of a reply that may be wrapped in a code fence or chatter. */
 function extractJson(raw: string): unknown {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = (fenced ? (fenced[1] ?? "") : raw).trim();
+  // Reasoning models (MiniMax M2, DeepSeek R1 and friends) put their thinking in <think> blocks inside the
+  // content, and the thinking quotes the JSON shape from the prompt. Drop it, including an unclosed block
+  // from a reply that hit max_tokens mid-thought, so only the answer is parsed.
+  const answer = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<think>[\s\S]*$/i, "");
+  const fenced = answer.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced ? (fenced[1] ?? "") : answer).trim();
   // An object or a bare array, whichever opens first.
   const starts = [candidate.indexOf("{"), candidate.indexOf("[")].filter((i) => i !== -1);
   if (starts.length === 0) throw new Error("no JSON in reply");
@@ -123,7 +127,7 @@ export interface UpstreamConfig {
 export function openAiCompleter(cfg: UpstreamConfig, fetchFn: typeof fetch = fetch): Completer {
   return async (system, user) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), cfg.timeoutMs ?? 30_000);
+    const timer = setTimeout(() => controller.abort(), cfg.timeoutMs ?? 90_000);
     try {
       const res = await fetchFn(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
@@ -131,8 +135,9 @@ export function openAiCompleter(cfg: UpstreamConfig, fetchFn: typeof fetch = fet
         body: JSON.stringify({
           model: cfg.model,
           temperature: 0.8,
-          // A dozen questions with options fits comfortably; this is the ceiling on what one call can cost.
-          max_tokens: cfg.maxTokens ?? 1500,
+          // The ceiling on what one call can cost. A dozen questions fit in ~1000 tokens, but reasoning
+          // models spend several thousand on their thinking first, so the default leaves room for that.
+          max_tokens: cfg.maxTokens ?? 6000,
           messages: [
             { role: "system", content: system },
             { role: "user", content: user },
@@ -141,9 +146,11 @@ export function openAiCompleter(cfg: UpstreamConfig, fetchFn: typeof fetch = fet
         signal: controller.signal,
       });
       if (!res.ok) throw new Error(`upstream ${res.status}`);
-      const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const content = body.choices?.[0]?.message?.content;
+      const body = (await res.json()) as { choices?: { finish_reason?: string; message?: { content?: string } }[] };
+      const choice = body.choices?.[0];
+      const content = choice?.message?.content;
       if (typeof content !== "string") throw new Error("upstream reply had no content");
+      if (choice?.finish_reason === "length") throw new Error("upstream reply was cut off at max_tokens");
       return content;
     } finally {
       clearTimeout(timer);
@@ -159,7 +166,7 @@ export function upstreamFromEnv(env: NodeJS.ProcessEnv = process.env): UpstreamC
     baseUrl: env.AI_BASE_URL ?? "https://api.venice.ai/api/v1",
     apiKey,
     model: env.AI_MODEL ?? "llama-3.3-70b",
-    timeoutMs: Number(env.AI_TIMEOUT_MS ?? 30_000),
-    maxTokens: Number(env.AI_MAX_TOKENS ?? 1500),
+    timeoutMs: Number(env.AI_TIMEOUT_MS ?? 90_000),
+    maxTokens: Number(env.AI_MAX_TOKENS ?? 6000),
   };
 }

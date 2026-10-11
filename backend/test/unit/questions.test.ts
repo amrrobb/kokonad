@@ -33,6 +33,11 @@ describe("normalise", () => {
   it("reads JSON out of a code fence and chatter", () => {
     expect(normalise("Sure! Here you go:\n```json\n" + good + "\n```\nEnjoy.", 5)).toHaveLength(2);
   });
+  it("ignores a reasoning block, even one that quotes the JSON shape or never closes", () => {
+    const think = '<think>\nThe shape is {"questions":[{"text":"...","options":["...","..."]}]} so I write\n</think>\n';
+    expect(normalise(think + good, 5)).toHaveLength(2);
+    expect(() => normalise('<think>\nstill thinking about {"questions":[]}', 5)).toThrow();
+  });
   it("accepts a bare array", () => {
     expect(normalise(JSON.stringify([{ text: "A?", options: ["x", "y"] }]), 5)).toHaveLength(1);
   });
@@ -91,8 +96,13 @@ describe("openAiCompleter", () => {
     expect((captured!.init.headers as Record<string, string>).authorization).toBe("Bearer k");
     const body = JSON.parse(String(captured!.init.body));
     expect(body.model).toBe("m");
-    expect(body.max_tokens).toBe(1500);
+    expect(body.max_tokens).toBe(6000);
     expect(body.messages).toEqual([{ role: "system", content: "sys" }, { role: "user", content: "usr" }]);
+  });
+  it("throws when the reply was cut off at max_tokens instead of parsing half a list", async () => {
+    const fetchFn = (async () =>
+      new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "<think>..." } }] }), { status: 200 })) as unknown as typeof fetch;
+    await expect(openAiCompleter({ baseUrl: "https://x", apiKey: "k", model: "m" }, fetchFn)("s", "u")).rejects.toThrow(/cut off/);
   });
   it("throws on a non-2xx upstream", async () => {
     const fetchFn = (async () => new Response("nope", { status: 401 })) as typeof fetch;

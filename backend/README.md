@@ -62,7 +62,7 @@ Nothing here touches the chain or the relayer wallet. The upstream is any OpenAI
 503 `ai_unavailable`, `/health` reports `drafting: false`, and the host screen shows only the manual form.
 Replies are validated and trimmed to what the contract takes (2 to 6 options, 140/40 characters); a reply
 with nothing usable is a 502, never an empty list. Three ceilings on cost, since every call is a paid model call: `DRAFTS_PER_HOUR` (20) per client address,
-`DRAFTS_PER_DAY` (60) across everyone, and `AI_MAX_TOKENS` (1500) per reply. Set a spending limit at the
+`DRAFTS_PER_DAY` (60) across everyone, and `AI_MAX_TOKENS` (6000) per reply; reasoning models such as MiniMax M2 spend most of that on a `<think>` block, which the parser discards. Set a spending limit at the
 provider as well; that one does not depend on this code.
 
 ## Run
