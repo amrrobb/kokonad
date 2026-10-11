@@ -49,6 +49,9 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
   await expect(hostCard(host, 2).getByText("Up next after question 1.")).toBeVisible();
   await expect(hostCard(host, 2).getByRole("button", { name: /Open question/ })).toHaveCount(0);
   await expect(host.page.getByTestId("stage")).toContainText("Waiting for players.");
+  // With questions sealed the writing form folds away, so the game keeps the screen.
+  await expect(host.page.getByRole("button", { name: "Write more questions" })).toBeVisible();
+  await expect(host.page.getByRole("heading", { name: "Write your questions" })).toHaveCount(0);
   await expect(host.page.locator("aside").getByText("In the room")).toContainText("0 of 3"); // budget 60 / deposit 20
   await shot(host, info, "1-room");
 
@@ -128,6 +131,9 @@ test("question 1: answers stay sealed, open on their own, and the right person i
   // exactly the box times the pixel ratio: anything else is a picture squeezed into a corner.
   const scene = host.page.getByTestId("pot-scene");
   await expect(scene).toHaveAttribute("data-coins", "3");
+  // On a 1280x800 laptop the pot and the live question are on screen together: nobody scrolls to follow the game.
+  await expect(scene).toBeInViewport({ ratio: 1 });
+  await expect(hostCard(host, 1)).toBeInViewport({ ratio: 1 });
   const surface = await scene.evaluate((el) => {
     const c = el.querySelector("canvas");
     return { mode: el.getAttribute("data-mode"), ok: !c || (c.width === Math.round(el.clientWidth * Math.min(devicePixelRatio, 2)) && c.height === Math.round(el.clientHeight * Math.min(devicePixelRatio, 2)) && c.width > 0) };

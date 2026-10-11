@@ -18,26 +18,32 @@ const MAX_COINS = 36; // = sum of LAYERS
 const R = 1.5; // bowl radius at the rim
 const H = 1.05; // bowl depth
 
-/** Coins per layer, bottom up: the bowl widens, so each layer holds more. Their sum is MAX_COINS. */
-const LAYERS = [4, 6, 8, 8, 10];
+/** Coins per layer, bottom up. Their sum is MAX_COINS. Above the first layer, one coin sits in the middle and the rest ring it. */
+const LAYERS = [4, 7, 9, 9, 7];
 
-/** Where coin `i` comes to rest: rings that alternate near the middle and near the shell, layer on layer. */
+/**
+ * Where coin `i` comes to rest. Coins in a ring are a full coin apart, so two coins always read as two:
+ * the figure printed under the bowl and the picture must never seem to disagree.
+ */
 function restingPlace(i: number): { pos: THREE.Vector3; tilt: THREE.Euler } {
   let layer = 0;
   let k = i;
   while (layer < LAYERS.length - 1 && k >= LAYERS[layer]!) k -= LAYERS[layer++]!;
-  const cap = LAYERS[layer]!;
   const rnd = (n: number) => {
     const x = Math.sin((i + 1) * 12.9898 + n * 78.233) * 43758.5453;
     return x - Math.floor(x);
   };
-  const y = -H + 0.2 + layer * 0.11 + rnd(0) * 0.02;
-  const inside = Math.max(0.1, R * Math.sqrt(Math.max(0, 1 - (y / H) ** 2)) - 0.32);
-  const radius = inside * (k % 2 === 0 ? 0.9 : 0.36);
-  const angle = (k / cap) * Math.PI * 2 + layer * 0.9;
+  const y = -H + 0.2 + layer * 0.11;
+  const inside = Math.max(0.1, R * Math.sqrt(Math.max(0, 1 - (y / H) ** 2)) - 0.3);
+  const centre = layer > 0 && k === 0;
+  const ring = layer > 0 ? LAYERS[layer]! - 1 : LAYERS[0]!;
+  const n = layer > 0 ? k - 1 : k;
+  // Opposite sides first (0, 180, 90, 270 degrees on the bottom layer), so a few coins spread out instead of bunching.
+  const angle = layer === 0 ? n * Math.PI + Math.floor(n / 2) * (Math.PI / 2) : (n / ring) * Math.PI * 2 + layer * 0.7;
+  const radius = centre ? 0 : inside * 0.82;
   return {
-    pos: new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius),
-    tilt: new THREE.Euler((rnd(3) - 0.5) * 0.45, rnd(4) * Math.PI, (rnd(5) - 0.5) * 0.45),
+    pos: new THREE.Vector3(Math.cos(angle) * radius, y + (centre ? 0.03 : 0), Math.sin(angle) * radius),
+    tilt: new THREE.Euler((rnd(3) - 0.5) * 0.3, rnd(4) * Math.PI, (rnd(5) - 0.5) * 0.3),
   };
 }
 

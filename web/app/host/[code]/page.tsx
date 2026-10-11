@@ -284,7 +284,11 @@ function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void;
 }
 
 /** Write the whole list first, seal it once. Nothing here is on the chain until "Seal". */
-function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; busy: boolean }) {
+function Builder({ onSeal, busy, hasQuestions }: { onSeal: (items: NewQuestion[]) => void; busy: boolean; hasQuestions: boolean }) {
+  // Open while the room has no questions; once it has some, it folds away so the game keeps the screen,
+  // and opens again only when the host asks for it.
+  const [asked, setAsked] = useState<boolean | null>(null);
+  const open = asked ?? !hasQuestions;
   const [text, setText] = useState("");
   const [opts, setOpts] = useState(["", ""]);
   const [list, setList] = useState<NewQuestion[]>([]);
@@ -298,6 +302,17 @@ function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; bus
     setList([...list, { text: text.trim(), options: clean }]);
     setText("");
     setOpts(["", ""]);
+  }
+
+  if (!open) {
+    return (
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-dashed border-line p-4">
+        <p className="text-[14px] font-extrabold text-ink-2">Want more rounds? Questions can be added at any time.</p>
+        <Btn tone="soft" onClick={() => setAsked(true)}>
+          Write more questions
+        </Btn>
+      </section>
+    );
   }
 
   return (
@@ -356,6 +371,7 @@ function Builder({ onSeal, busy }: { onSeal: (items: NewQuestion[]) => void; bus
             disabled={toSeal.length === 0 || busy}
             onClick={() => {
               onSeal(toSeal);
+              setAsked(null);
               setList([]);
               setText("");
               setOpts(["", ""]);
@@ -532,6 +548,9 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
   const inFlight = list.find((q) => q.status >= Status.OPEN && q.status <= Status.RESOLVED);
   const nextId = list.find((q) => q.status === Status.DRAFT)?.id;
   const blocked = inFlight ? `Question ${Number(inFlight.id) + 1} finishes first.` : view.people.length === 0 ? "Wait for someone to join." : null;
+  const finished = (q: HostQuestion) => q.status === Status.SETTLED || q.status === Status.VOIDED;
+  const toPlay = list.filter((q) => !finished(q));
+  const played = list.filter(finished);
   const standings = view.people.map((p, i) => ({ ...p, i })).sort((a, b) => (a.coins === b.coins ? a.i - b.i : a.coins > b.coins ? -1 : 1));
   const leading = standings.length > 1 && standings[0]!.coins > standings[1]!.coins;
   // Sponsored rooms seat as many people as the budget can give a starting deposit to; both figures are from the chain.
@@ -571,13 +590,27 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
         <p className="mb-4 rounded-[14px] bg-bg-2 px-4 py-2 text-[13px] font-bold text-ink-3 lg:hidden">Best on a laptop.</p>
         {(busy || error) && <p className={`mb-4 rounded-[14px] px-4 py-3 font-extrabold ${error ? "bg-[#FDE7E2] text-danger" : "bg-peach"}`}>{error ?? `${busy}…`}</p>}
         <Stage code={code} list={list} people={view.people.length} seats={seats} inFlight={inFlight} nextId={nextId} now={now} />
-        <Builder busy={!!busy} onSeal={(items) => act(items.length === 1 ? "Sealing the question" : `Sealing ${items.length} questions`, () => sealQuestions(room, items))} />
-        {/* In playing order: the next thing to do is always the first unfinished card. */}
-        <ol className="mt-6 flex flex-col gap-4">
-          {list.map((q) => (
-            <QuestionCard key={String(q.id)} room={room} q={q} now={now} isNext={q.id === nextId} blocked={blocked} payFailed={payFailed.has(String(q.id))} busy={!!busy} act={act} />
-          ))}
-        </ol>
+        {/* What is live or still to play sits right under the stage, in playing order; finished questions move below. */}
+        {[toPlay, played].map(
+          (group, g) =>
+            group.length > 0 && (
+              <div key={g} className="mb-5">
+                {g === 1 && <h2 className="mb-2 text-[12px] font-black uppercase tracking-wide text-ink-3">Played</h2>}
+                <ol className="flex flex-col gap-4">
+                  {group.map((q) => (
+                    <QuestionCard key={String(q.id)} room={room} q={q} now={now} isNext={q.id === nextId} blocked={blocked} payFailed={payFailed.has(String(q.id))} busy={!!busy} act={act} />
+                  ))}
+                </ol>
+              </div>
+            ),
+        )}
+        {questions && (
+          <Builder
+            busy={!!busy}
+            hasQuestions={list.length > 0}
+            onSeal={(items) => act(items.length === 1 ? "Sealing the question" : `Sealing ${items.length} questions`, () => sealQuestions(room, items))}
+          />
+        )}
       </main>
     </div>
   );
