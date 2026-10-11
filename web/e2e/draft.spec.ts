@@ -54,6 +54,22 @@ test("host drafts questions from a one-line brief, drops one, seals the rest", a
   expect(await pub.readContract({ address: await roomAddress(code), abi: questionCountAbi, functionName: "questionCount" })).toBe(0n);
   await host.page.getByRole("button", { name: "Remove question 3" }).click();
   await expect(list.locator("li")).toHaveCount(2);
+
+  // A seal that is refused (here: the relayer is down for one request) loses nothing: the drafts stay put.
+  let refused = 0;
+  await host.page.route("**/relay", (route) => {
+    refused++;
+    return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ status: "refused", reason: "unavailable" }) });
+  });
+  await host.page.getByRole("button", { name: "Seal 2 questions" }).click();
+  await expect.poll(() => refused).toBeGreaterThan(0);
+  await expect(host.page.getByRole("button", { name: "Seal 2 questions" })).toBeEnabled();
+  await expect(list.locator("li")).toHaveCount(2);
+  await expect(list).toContainText("Will the demo work on the first try?");
+  expect(await pub.readContract({ address: await roomAddress(code), abi: questionCountAbi, functionName: "questionCount" })).toBe(0n);
+  await host.page.unroute("**/relay");
+  host.errors.length = 0; // the refused request is logged by the browser; that one is expected
+
   await host.page.getByRole("button", { name: "Seal 2 questions" }).click();
 
   await expect(host.page.getByTestId("question-1")).toContainText("Which lightning talk gets the loudest applause?");

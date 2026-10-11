@@ -24,7 +24,8 @@ const OPTION_COLORS = ["#7CC1F5", "#FF6B4A", "#F7C948", "#B9A2F0", "#A8E6CF", "#
 const CLOCK_MARGIN = 2;
 const STATE: Record<number, string> = { 0: "sealed", 1: "live", 2: "opening answers", 3: "opening answers", 4: "result set", 5: "done", 6: "cancelled" };
 
-type Act = (label: string, fn: () => Promise<unknown>) => void;
+/** Runs one host action behind the busy banner. Resolves true when it went through, false when it was refused. */
+type Act = (label: string, fn: () => Promise<unknown>) => Promise<boolean>;
 interface NewQuestion {
   text: string;
   options: string[];
@@ -284,7 +285,7 @@ function Drafter({ onDrafts, busy }: { onDrafts: (items: NewQuestion[]) => void;
 }
 
 /** Write the whole list first, seal it once. Nothing here is on the chain until "Seal". */
-function Builder({ onSeal, busy, hasQuestions }: { onSeal: (items: NewQuestion[]) => void; busy: boolean; hasQuestions: boolean }) {
+function Builder({ onSeal, busy, hasQuestions }: { onSeal: (items: NewQuestion[]) => Promise<boolean>; busy: boolean; hasQuestions: boolean }) {
   // Open while the room has no questions; once it has some, it folds away so the game keeps the screen,
   // and opens again only when the host asks for it.
   const [asked, setAsked] = useState<boolean | null>(null);
@@ -370,11 +371,15 @@ function Builder({ onSeal, busy, hasQuestions }: { onSeal: (items: NewQuestion[]
           <Btn
             disabled={toSeal.length === 0 || busy}
             onClick={() => {
-              onSeal(toSeal);
-              setAsked(null);
-              setList([]);
-              setText("");
-              setOpts(["", ""]);
+              // Nothing typed or drafted is thrown away until the seal has gone through: a refused seal
+              // leaves the list exactly as it was, ready to try again.
+              void onSeal(toSeal).then((sealed) => {
+                if (!sealed) return;
+                setAsked(null);
+                setList([]);
+                setText("");
+                setOpts(["", ""]);
+              });
             }}
           >
             {toSeal.length <= 1 ? "Seal question" : `Seal ${toSeal.length} questions`}
@@ -507,14 +512,18 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
   const view = viewQ.data;
   const questions = qsQ.data?.questions;
 
-  function act(label: string, fn: () => Promise<unknown>) {
+  const act: Act = (label, fn) => {
     setBusy(label);
     setError(null);
-    fn()
+    return fn()
       .then(() => Promise.all([viewQ.refetch(), qsQ.refetch()]))
-      .catch((err) => setError(err instanceof PlainError ? err.message : "Something didn't go through. Try again."))
+      .then(() => true)
+      .catch((err) => {
+        setError(err instanceof PlainError ? err.message : "Something didn't go through. Try again.");
+        return false;
+      })
       .finally(() => setBusy(null));
-  }
+  };
 
   // Pay-outs need no click: once a result can no longer be disputed, this tab sends the pay-out itself.
   // Guarded per question so a 2 s poll never sends twice; a failure brings back a manual button.
