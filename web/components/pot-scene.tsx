@@ -65,8 +65,9 @@ function build(host: HTMLDivElement, still: boolean): Stage | null {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 40);
-  camera.position.set(0, 3.0, 4.9);
-  camera.lookAt(0, -0.42, 0);
+  // High enough that the near wall never hides a coin on the bottom, wherever the bowl has turned to.
+  camera.position.set(0, 3.9, 4.4);
+  camera.lookAt(0, -0.35, 0);
   scene.add(new THREE.HemisphereLight(0xfff6ea, 0xd9a983, 1.25));
   const sun = new THREE.DirectionalLight(0xffffff, 1.9);
   sun.position.set(2.5, 5, 3.5);
