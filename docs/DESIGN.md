@@ -88,8 +88,8 @@ Numbers that change (pot, balance, timer, counts) use `font-variant-numeric: tab
 ## 4. Motion
 Changed 11 Oct 2026 at the builder's request: a community game has to feel alive, so motion is no longer limited to one moment. The rules that replace "nothing else bounces":
 
-- **Motion explains a change of state.** Someone joins, an answer is sealed, the pot grows, answers open, the result lands. If nothing changed, nothing moves (the one exception is the slow idle turn of the host's pot bowl).
-- **One celebration stays one.** Coins flying from the result number to the balance pill on a win (10 coins, 700–1300 ms, cubic-bezier(.2,.7,.2,1)) is still the only celebratory animation. `components/coins.ts` is not to be restyled casually; the e2e suite counts its coins.
+- **Motion explains a change of state.** Someone joins, an answer is sealed, the pot grows, answers open, the result lands. If nothing changed, nothing moves, with two exceptions that idle in place: the slow turn of the host's pot bowl, and the mascot (since 12 Oct 2026 it breathes, nods or hops where it stands, §6).
+- **One celebration stays one.** Coins flying from the result number to the balance pill on a win (10 coins, 700–1300 ms, cubic-bezier(.2,.7,.2,1)) is still the only thing that flies. Since 12 Oct 2026 the happy mascot on the result card hops beside it; nothing else celebrates (no confetti, no bursts). `components/coins.ts` is not to be restyled casually; the e2e suite counts its coins.
 - **Money figures are never tweened.** A number that stands for coins shows the chain's value or nothing (CLAUDE.md rule 1). Bars, bowls and rings may ease; digits may not count up.
 - **Enter, don't linger.** Screens and list items animate in (150–350 ms, ease-out, a soft spring for people and coins). No exit animations on anything a test or a person can press: a leaving node that is still mounted is a second button.
 - **3D is for the host's screen only.** The pot bowl (`components/pot-scene.tsx`, three.js) is loaded on demand on `/host/[code]`. Participant phones never download or run it; they get the flat bowl.

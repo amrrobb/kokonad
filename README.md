@@ -180,9 +180,10 @@ Live at **https://kokonad.robbyn.xyz** (Monad testnet; the relayer at `kokonad-r
 
 1. Open `https://kokonad.robbyn.xyz/host` on a laptop → "Create room" (continue with email, or "Just play on this device").
 2. Type the questions, or say what the event is about and take the first draft → "Seal".
-3. Open `https://kokonad.robbyn.xyz/r/<CODE>` on a phone (or another tab) → pick a name → join.
-4. On the laptop click "Open question 1"; answer on the phone; when the timer ends, tap the right option on the laptop.
-5. Watch the coins land on the phone. The pay-out happens on its own once the result can no longer be disputed.
+3. Click "Open the big screen" in the host sidebar and put that window on the projector: it shows the code and a QR to scan, then the live question, the clock, the result and the standings. It needs no account.
+4. Open `https://kokonad.robbyn.xyz/r/<CODE>` on a phone (or another tab) → pick a name → join.
+5. On the laptop click "Open question 1"; answer on the phone; when the timer ends, tap the right option on the laptop.
+6. Watch the coins land on the phone. The pay-out happens on its own once the result can no longer be disputed.
 
 No wallet, no MON needed: the game token and gas are handled inside the app.
 
