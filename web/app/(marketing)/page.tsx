@@ -16,10 +16,6 @@ export default function Landing() {
   return (
     <div
       className="flex min-h-screen flex-col"
-      style={{
-        background:
-          "radial-gradient(60vw 50vw at 92% 12%, #FBE0CF, transparent 66%), radial-gradient(50vw 40vw at 4% 96%, #FBE0CF, transparent 66%) #FBF3EA",
-      }}
     >
       <header className={`flex items-center justify-between py-[clamp(18px,2vw,28px)] ${pad}`}>
         <Link href="/" className="flex items-center gap-2.5">
@@ -41,10 +37,10 @@ export default function Landing() {
             Write a question in 10 seconds. The prize goes to whoever earned it, the moment you call it. Nobody checks, nobody holds money.
           </p>
           <div style={{ "--i": 3 } as React.CSSProperties} className="rise mt-1.5 flex flex-wrap gap-3">
-            <Link href="/host" className="whitespace-nowrap rounded-full bg-coral px-[34px] py-[18px] text-[17px] font-black text-white shadow-[0_10px_22px_rgba(255,107,74,.30)] transition hover:bg-coral-d active:scale-[.98]">
+            <Link href="/host" style={{ "--ledge": "var(--color-coral-d)" } as React.CSSProperties} className="ledge whitespace-nowrap rounded-full bg-coral px-[34px] py-[18px] text-[17px] font-black text-white hover:bg-coral-d">
               Create room →
             </Link>
-            <Link href="/join" className="whitespace-nowrap rounded-full border border-line bg-surface px-7 py-[18px] text-[17px] font-black transition active:scale-[.98]">
+            <Link href="/join" className="ledge whitespace-nowrap rounded-full border border-line bg-surface px-7 py-[18px] text-[17px] font-black">
               Have a code? Join
             </Link>
           </div>

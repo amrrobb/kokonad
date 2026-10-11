@@ -19,6 +19,21 @@
   --font-sans: var(--font-nunito), "Avenir Next Rounded", "Segoe UI", system-ui, sans-serif;
 }
 
+/* Two warm blobs at opposite corners, on every screen (DESIGN.md §2). Fixed, so a long host page scrolls over them. */
+body {
+  background:
+    radial-gradient(max(60vw, 340px) max(50vw, 300px) at 96% 2%, #fbe0cf, transparent 66%),
+    radial-gradient(max(50vw, 300px) max(40vw, 260px) at 2% 100%, #fbe0cf, transparent 66%),
+    var(--color-bg);
+  background-attachment: fixed;
+}
+
+/* Things you press feel like game pieces: they sit on a ledge and go down when pressed. */
+.ledge { box-shadow: 0 4px 0 var(--ledge, rgba(59, 31, 20, 0.1)); transition: transform 0.12s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.12s, background-color 0.15s, border-color 0.15s; }
+@media (hover: hover) { .ledge:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 0 var(--ledge, rgba(59, 31, 20, 0.1)); } }
+.ledge:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--ledge, rgba(59, 31, 20, 0.1)); }
+.ledge:disabled { box-shadow: none; }
+
 /* Motion that needs no script (DESIGN.md §4): the landing page is rendered on the server, and a page
    that waits for JavaScript before it shows its headline is a slower page. */
 @keyframes rise {
@@ -33,6 +48,25 @@
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 74, 0); }
   50% { box-shadow: 0 0 0 6px rgba(255, 107, 74, 0.14); }
 }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1, 1) translateY(0); }
+  50% { transform: scale(1.025, 0.975) translateY(1.5%); }
+}
+@keyframes nod {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(-9%) scale(0.97, 1.04); }
+  60% { transform: translateY(0) scale(1.04, 0.96); }
+}
+@keyframes spin-slow { to { transform: rotate(360deg); } }
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
@@ -40,11 +74,18 @@
 .rise { animation: rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
 .drift { animation: drift 5s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.3s); }
 .live-glow { animation: live-glow 2.2s ease-in-out infinite; }
+.shake { animation: shake 0.36s ease-in-out 1; }
+/* The mascot is alive in four ways, one per pose: it breathes asleep, nods when it is waiting, hops when it is happy. */
+.breathe { animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 90%; }
+.nod { animation: nod 2.8s ease-in-out infinite; transform-origin: 50% 85%; }
+.hop { animation: hop 1.5s cubic-bezier(0.3, 0, 0.3, 1) infinite; transform-origin: 50% 100%; }
+.spin-slow { animation: spin-slow 40s linear infinite; }
 .shimmer {
   background: linear-gradient(90deg, #f6e9db 25%, #fff6ec 50%, #f6e9db 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .rise, .drift, .live-glow, .shimmer { animation: none; }
+  .rise, .drift, .live-glow, .shimmer, .shake, .breathe, .nod, .hop, .spin-slow { animation: none; }
+  .ledge, .ledge:hover, .ledge:active { transform: none; transition: none; }
 }

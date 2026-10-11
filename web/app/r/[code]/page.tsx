@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { encodeFunctionData, type Address } from "viem";
@@ -12,7 +11,8 @@ import { PlainError, send } from "@/lib/relay";
 import { findRoom, readLatestQuestion, readRoom } from "@/lib/room";
 import { useSigner } from "@/lib/signer";
 import { SignIn } from "@/components/sign-in";
-import { Avatar, PrimaryButton, RoomHeader, Screen, coins } from "@/components/ui";
+import { Avatar, Coin, Moment, PrimaryButton, RoomHeader, Screen, coins } from "@/components/ui";
+import { Mascot } from "@/components/mascot";
 import { QuestionScreen } from "@/components/question";
 import { motion } from "motion/react";
 import { Appear, POP, PopItem } from "@/components/motion";
@@ -102,7 +102,7 @@ function Room({ code, me }: { code: string; me: Address }) {
     return (
       <Screen>
         <RoomHeader code={code} />
-        <p className="mt-10 text-center font-extrabold text-ink-2">Can&apos;t reach the game right now. Check your connection and reload.</p>
+        <Moment mood="oops" level={1} title="Can't reach the game right now." body="Check your connection and reload." />
       </Screen>
     );
   }
@@ -110,7 +110,7 @@ function Room({ code, me }: { code: string; me: Address }) {
     return (
       <Screen>
         <RoomHeader code={code} />
-        <p className="mt-10 text-center font-extrabold text-ink-3">Finding room {code}…</p>
+        <Moment mood="surprised" level={1} title={`Finding room ${code}…`} />
       </Screen>
     );
   }
@@ -118,13 +118,11 @@ function Room({ code, me }: { code: string; me: Address }) {
     return (
       <Screen>
         <RoomHeader code={code} />
-        <div className="mt-10 flex flex-col gap-3 text-center">
-          <h1 className="text-[24px] font-black">Room not found.</h1>
-          <p className="font-extrabold text-ink-2">Check the code with your host.</p>
-          <Link href="/join" className="mt-4 font-black text-coral">
+        <Moment mood="oops" level={1} title="Room not found." body="Check the code with your host.">
+          <Link href="/join" className="ledge mt-3 rounded-full border border-line bg-surface px-6 py-3 font-black">
             Try another code
           </Link>
-        </div>
+        </Moment>
       </Screen>
     );
   }
@@ -150,14 +148,12 @@ function Room({ code, me }: { code: string; me: Address }) {
     return (
       <Screen>
         <RoomHeader code={code} balance={balance} />
-        <div className="mt-8 flex flex-col gap-5">
-          <Appear className="flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-[30px] font-black leading-[1.1] tracking-[-.02em]">Hi, {myName}.</h1>
-              <p className="mt-2 font-extrabold text-ink-2">The host is setting up questions.</p>
-            </div>
-            <Image src="/mascot/mascot-sleepy.png" alt="" width={96} height={96} className="drift h-[84px] w-[84px] shrink-0 object-contain" />
-          </Appear>
+        <Appear className="mt-4 flex flex-1 flex-col gap-4">
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-2 text-center">
+            <Mascot mood="sleepy" size={168} disc priority />
+            <h1 className="mt-2 text-[30px] font-black leading-[1.1] tracking-[-.02em]">Hi, {myName}.</h1>
+            <p className="font-extrabold text-ink-2">The host is setting up questions.</p>
+          </div>
           <section className="rounded-[22px] border border-line bg-card p-4">
             <h2 className="text-[16px] font-black">In the room ({view.people.length})</h2>
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -169,9 +165,12 @@ function Room({ code, me }: { code: string; me: Address }) {
               ))}
             </ul>
           </section>
-          <p className="rounded-[14px] bg-peach px-4 py-3 text-[14px] font-extrabold">✓ {coins(view.me.deposit)} coins in your balance</p>
-          <p className="text-center text-[13px] font-bold text-ink-3">The game starts when the host opens the first question.</p>
-        </div>
+          <p className="flex items-center gap-2.5 rounded-[18px] bg-peach px-4 py-3.5 text-[15px] font-black">
+            <Coin size={22} />
+            <span>{coins(view.me.deposit)} coins in your balance</span>
+          </p>
+          <p className="px-2 pb-1 text-center text-[13px] font-bold text-ink-3">Keep this screen open. The first question shows up here the moment the host opens it.</p>
+        </Appear>
       </Screen>
     );
   }
@@ -181,18 +180,23 @@ function Room({ code, me }: { code: string; me: Address }) {
     return (
       <Screen>
         <RoomHeader code={code} />
-        <div className="mt-10 flex flex-col gap-5">
-          {failed ? (
-            <div>
-              <h1 className="text-[24px] font-black">Something didn&apos;t go through.</h1>
-              <p className="mt-2 font-extrabold text-ink-2">{failed.message}</p>
+        <div className="mt-6 flex flex-1 flex-col gap-5">
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              {failed ? (
+                <>
+                  <h1 className="text-[24px] font-black leading-[1.15]">Something didn&apos;t go through.</h1>
+                  <p className="mt-2 font-extrabold text-ink-2">{failed.message}</p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-[24px] font-black leading-[1.15]">Setting up your account…</h1>
+                  <p className="mt-2 font-extrabold text-ink-2">Takes a few seconds. Don&apos;t close this tab.</p>
+                </>
+              )}
             </div>
-          ) : (
-            <div>
-              <h1 className="text-[24px] font-black">Setting up your account…</h1>
-              <p className="mt-2 font-extrabold text-ink-2">Takes a few seconds. Don&apos;t close this tab.</p>
-            </div>
-          )}
+            <Mascot mood={failed ? "oops" : "surprised"} size={96} disc />
+          </div>
           <ul className="flex flex-col gap-2">
             {STEPS.map(([step, label]) => {
               const ok = done.includes(step);
@@ -214,10 +218,10 @@ function Room({ code, me }: { code: string; me: Address }) {
             })}
           </ul>
           {failed && (
-            <>
+            <div className="mt-auto flex flex-col gap-3">
               <PrimaryButton onClick={join}>Try again</PrimaryButton>
               <p className="text-center text-[13px] font-bold text-ink-3">Still stuck? Show this screen to your host.</p>
-            </>
+            </div>
           )}
         </div>
       </Screen>
@@ -229,28 +233,27 @@ function Room({ code, me }: { code: string; me: Address }) {
     <Screen>
       <RoomHeader code={code} />
       <form
-        className="mt-10 flex flex-1 flex-col gap-4"
+        className="flex flex-1 flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (name.trim()) void join();
         }}
       >
-        <div>
-          <h1 className="text-[30px] font-black leading-[1.1] tracking-[-.02em]">Almost in.</h1>
-          <p className="mt-2 font-extrabold text-ink-2">What should we call you?</p>
-        </div>
+        <Appear className="flex flex-1 flex-col items-center justify-center gap-3 py-4 text-center">
+          <Mascot mood={name.trim() ? "happy" : "surprised"} size={156} disc priority />
+          <h1 className="mt-1 text-[30px] font-black leading-[1.1] tracking-[-.02em]">Almost in.</h1>
+          <p className="font-extrabold text-ink-2">What should we call you?</p>
+        </Appear>
         <input
           value={name}
           onChange={(e) => setName(e.target.value.slice(0, 24))}
           placeholder="Your name"
           autoComplete="nickname"
-          className="rounded-[18px] border-2 border-line bg-surface px-4 py-3 text-[18px] font-black outline-none focus:border-coral"
+          className="rounded-[18px] border-2 border-line bg-surface px-4 py-3.5 text-center text-[20px] font-black outline-none placeholder:text-[#D9C6BA] focus:border-coral"
         />
-        <div className="mt-auto">
-          <PrimaryButton type="submit" disabled={!name.trim()}>
-            Join room
-          </PrimaryButton>
-        </div>
+        <PrimaryButton type="submit" disabled={!name.trim()}>
+          Join room
+        </PrimaryButton>
       </form>
     </Screen>
   );

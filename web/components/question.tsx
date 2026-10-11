@@ -7,12 +7,12 @@ import { encodeFunctionData } from "viem";
 import { PlainError, send } from "@/lib/relay";
 import type { QuestionView, RoomView } from "@/lib/room";
 import { saltFor } from "@/lib/salt";
-import Image from "next/image";
 import { motion } from "motion/react";
 import { flyCoins } from "./coins";
+import { Mascot } from "./mascot";
 import { Appear, POP, RiseItem } from "./motion";
 import { AnswerDots, PotBowl } from "./pot";
-import { Avatar, PrimaryButton, coins } from "./ui";
+import { Avatar, Moment, PrimaryButton, coins } from "./ui";
 
 const OPTION_COLORS = ["#7CC1F5", "#FF6B4A", "#F7C948", "#B9A2F0", "#A8E6CF", "#FFB08F"];
 const optionWord = (i: bigint) => numberToHex(i, { size: 32 });
@@ -26,13 +26,11 @@ function useNow() {
   return now;
 }
 
-function Meta({ view, q }: { view: RoomView; q: QuestionView }) {
+/** Which question this is, and the one rule of the game, in a chip above the question. */
+function Meta({ q }: { q: QuestionView }) {
   return (
-    <p className="text-[13px] font-bold text-ink-3">
-      Question {Number(q.id) + 1} · everyone correct splits the pot
-      <span className="float-right tabular-nums">
-        pot <b className="text-ink">{coins(q.pot)}</b> · play {coins(view.playPrice)}
-      </span>
+    <p className="self-start rounded-full border border-line bg-surface px-3 py-1.5 text-[12px] font-extrabold text-ink-2">
+      Question {Number(q.id) + 1} <span className="text-ink-3">· everyone right splits the pot</span>
     </p>
   );
 }
@@ -68,25 +66,54 @@ function Timer({ left, total }: { left: number; total: number }) {
   );
 }
 
-/** The room at a glance while a question is open: the pot as a bowl, and one dot per player that fills when they seal. */
-function Pulse({ q }: { q: QuestionView }) {
+/** The room at a glance while a question is open: the pot as a bowl beside its figure, and one dot per player that fills when they seal. */
+function Pulse({ view, q }: { view: RoomView; q: QuestionView }) {
   return (
-    <div className="flex items-center gap-4 rounded-[18px] bg-bg-2 px-4 py-2.5" data-testid="pulse">
-      <PotBowl coins={Number(q.pot / 10n ** 18n)} width={64} />
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <span className="text-[11px] font-black uppercase tracking-wide text-ink-3">Sealed so far</span>
+    <div className="flex items-center gap-3.5 rounded-[18px] border border-line bg-card px-4 py-3" data-testid="pulse">
+      <PotBowl coins={Number(q.pot / 10n ** 18n)} width={72} />
+      <div className="min-w-0 flex-1">
+        <p className="flex items-baseline gap-1.5 text-[12px] font-black uppercase tracking-wide text-ink-3">
+          pot <b className="text-[30px] font-black normal-case leading-none tracking-[-.03em] text-ink tabular-nums">{coins(q.pot)}</b>
+        </p>
+        <p className="mt-0.5 text-[12px] font-bold text-ink-3">play {coins(view.playPrice)} each</p>
+      </div>
+      <div className="flex max-w-[92px] flex-col items-end gap-1.5">
+        <span className="text-[11px] font-black uppercase tracking-wide text-ink-3">Sealed</span>
         <AnswerDots answered={q.answerers} of={q.charged} />
       </div>
     </div>
   );
 }
 
-function Note({ title, body }: { title: string; body?: string }) {
+/** The options as tiles. Short options sit two to a row, the way they do on the big screen; long ones take a row each. */
+function Options({ options, pick, onPick, sealed = false }: { options: string[]; pick: number | null; onPick?: (i: number) => void; sealed?: boolean }) {
+  const two = options.every((o) => o.length <= 16);
   return (
-    <div className="rounded-[22px] border border-line bg-card p-5">
-      <h2 className="text-[18px] font-black">{title}</h2>
-      {body && <p className="mt-1 font-extrabold text-ink-2">{body}</p>}
-    </div>
+    <ul className={`grid gap-2.5 ${two ? "grid-cols-2" : "grid-cols-1"}`}>
+      {options.map((o, i) => {
+        const on = pick === i;
+        return (
+          <RiseItem key={i} i={i + 1} opacity={sealed && !on ? 0.5 : 1} className={two && options.length % 2 === 1 && i === options.length - 1 ? "col-span-2" : ""}>
+            <button
+              type="button"
+              disabled={sealed}
+              aria-pressed={on}
+              onClick={() => onPick?.(i)}
+              style={{ "--ledge": on ? "var(--color-coral)" : undefined } as React.CSSProperties}
+              className={`ledge relative flex h-full w-full items-center gap-3 rounded-[18px] border-2 bg-surface p-3 text-left text-[16px] font-black leading-[1.15] ${two ? "min-h-[84px]" : "min-h-[64px]"} ${on ? "border-coral bg-[#FFF0EA]" : "border-transparent"}`}
+            >
+              <span className="h-[38px] w-1.5 shrink-0 rounded-full" style={{ background: OPTION_COLORS[i % OPTION_COLORS.length] }} />
+              <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{o}</span>
+              {on && (
+                <motion.span aria-hidden="true" initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={POP} className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-coral text-[12px] text-white">
+                  ✓
+                </motion.span>
+              )}
+            </button>
+          </RiseItem>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -132,20 +159,25 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   }
 
   const header = (
-    <div className="flex items-start gap-4">
-      <h1 className="flex-1 text-[24px] font-black leading-[1.15] tracking-[-.015em]">{q.text}</h1>
-      {q.status === Status.OPEN && <Timer left={left} total={q.lockAt - q.openAt} />}
+    <div className="flex flex-col gap-3">
+      <Meta q={q} />
+      <div className="flex items-center gap-3">
+        <h1 className="min-w-0 flex-1 text-[24px] font-black leading-[1.15] tracking-[-.015em] [text-wrap:balance]">{q.text}</h1>
+        {q.status === Status.OPEN && <Timer left={left} total={q.lockAt - q.openAt} />}
+      </div>
     </div>
   );
+  const sealedPick = localAnswer.get(`${room}:${q.id}`) ?? null;
 
   // Not in this question at all
   if (!q.me.charged && q.status <= Status.REVEAL) {
     const outOfPlays = view.me.deposit < view.playPrice;
     return (
-      <Appear key="watching" className="flex flex-col gap-5">
-        <Meta view={view} q={q} />
+      <Appear key="watching" className="flex flex-1 flex-col gap-4">
         {header}
-        <Note
+        <Moment
+          mood="sleepy"
+          size={132}
           title={outOfPlays ? "You're out of plays." : "This question was already running."}
           body={outOfPlays ? "Ask the host for more coins to keep playing." : "You'll play from the next one."}
         />
@@ -157,33 +189,15 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   if (open && q.me.hasPlay && !q.me.committed) {
     return (
       <Appear key="answering" className="flex flex-1 flex-col gap-4">
-        <Meta view={view} q={q} />
         {header}
-        <Pulse q={q} />
-        <ul className="flex flex-col gap-2.5">
-          {q.options.map((o, i) => (
-            <RiseItem key={i} i={i + 1}>
-              <button
-                type="button"
-                onClick={() => setPick(i)}
-                className={`flex w-full items-center gap-3 rounded-[18px] border-2 bg-surface p-3 text-left text-[16px] font-black transition hover:-translate-y-px active:scale-[.98] ${pick === i ? "border-coral bg-[#FFF0EA]" : "border-transparent"}`}
-              >
-                <span className="h-[38px] w-1.5 rounded-full" style={{ background: OPTION_COLORS[i % OPTION_COLORS.length] }} />
-                <span className="flex-1">{o}</span>
-                {pick === i && (
-                  <motion.span initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={POP} className="grid h-6 w-6 place-items-center rounded-full bg-coral text-[12px] text-white">
-                    ✓
-                  </motion.span>
-                )}
-              </button>
-            </RiseItem>
-          ))}
-        </ul>
+        <Pulse view={view} q={q} />
+        <Options options={q.options} pick={pick} onPick={setPick} />
         {error && <p className="text-center text-[14px] font-extrabold text-danger">{error}</p>}
-        <div className="mt-auto">
+        <div className="mt-auto pt-2">
           <PrimaryButton onClick={lock} disabled={pick === null || busy}>
             {busy ? "Sealing…" : "Lock answer"}
           </PrimaryButton>
+          <p className="mt-2.5 text-center text-[12px] font-bold text-ink-3">{pick === null ? "Tap an answer first." : "Sealed answers stay hidden until time is up."}</p>
         </div>
       </Appear>
     );
@@ -192,11 +206,19 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   // Sealed, waiting for time
   if (q.status === Status.OPEN && q.me.committed && left > 0) {
     return (
-      <Appear key="sealed" className="flex flex-col gap-4">
-        <Meta view={view} q={q} />
+      <Appear key="sealed" className="flex flex-1 flex-col gap-4">
         {header}
-        <Pulse q={q} />
-        <Note title="Your answer is sealed" body={`Nobody can see it until time is up. ${q.answerers} of ${q.charged} have answered.`} />
+        <Pulse view={view} q={q} />
+        <Options options={q.options} pick={sealedPick} sealed />
+        <div className="mt-auto flex items-center gap-3 rounded-[18px] bg-peach px-4 py-3">
+          <Mascot mood="happy" size={56} />
+          <div className="min-w-0">
+            <h2 className="text-[16px] font-black">Your answer is sealed</h2>
+            <p className="text-[13px] font-extrabold text-ink-2">
+              Nobody can see it until time is up. {q.answerers} of {q.charged} have answered.
+            </p>
+          </div>
+        </div>
       </Appear>
     );
   }
@@ -205,16 +227,18 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   if (closedForAnswers) {
     if (!q.me.committed) {
       return (
-        <Appear key="missed" className="flex flex-col gap-5">
+        <Appear key="missed" className="flex flex-1 flex-col gap-4">
           {header}
-          <Note title={`Time's up. Your ${coins(view.playPrice)} coin${view.playPrice === 10n ** 18n ? "" : "s"} stayed in the pot.`} body="Next question is coming." />
+          <Moment mood="sleepy" size={132} title={`Time's up. Your ${coins(view.playPrice)} coin${view.playPrice === 10n ** 18n ? "" : "s"} stayed in the pot.`} body="Next question is coming." />
         </Appear>
       );
     }
     return (
-      <Appear key="opening" className="flex flex-col gap-5">
+      <Appear key="opening" className="flex flex-1 flex-col gap-4">
         {header}
-        <Note
+        <Moment
+          mood="surprised"
+          size={132}
           title={q.me.revealed ? "Everyone's answers are open" : "Opening your answer…"}
           body={q.me.revealed ? `Waiting for the host to set the result. ${q.revealed} of ${q.answerers} answers open.` : "This happens on its own. Keep this tab open."}
         />
@@ -225,7 +249,7 @@ export function QuestionScreen({ room, view, q, onChange }: { room: Address; vie
   // Result
   if (q.status === Status.RESOLVED || q.status === Status.SETTLED) return <Result view={view} q={q} now={now} />;
 
-  if (q.status === Status.VOIDED) return <Note title="This question was cancelled." body="Everyone's play went back to their balance." />;
+  if (q.status === Status.VOIDED) return <Moment mood="surprised" level={1} title="This question was cancelled." body="Everyone's play went back to their balance." />;
   return null;
 }
 
@@ -267,7 +291,7 @@ function Result({ view, q, now }: { view: RoomView; q: QuestionView; now: number
             </>
           )}
         </p>
-        <Image src={won ? "/mascot/mascot-happy.png" : "/mascot/mascot-oops.png"} alt="" width={96} height={96} className={`absolute right-3 top-3 h-[88px] w-[88px] object-contain ${won ? "drift" : ""}`} />
+        <Mascot mood={won ? "happy" : "oops"} size={96} className="!absolute right-2 top-2" />
       </div>
 
       {q.picks.length > 0 && (

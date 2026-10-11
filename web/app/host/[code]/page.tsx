@@ -12,7 +12,9 @@ import { canDraft, draftQuestions, PlainError } from "@/lib/relay";
 import { findRoom, readHostQuestions, readRoom, type HostQuestion } from "@/lib/room";
 import { useSigner } from "@/lib/signer";
 import { SignIn } from "@/components/sign-in";
-import { Avatar, coins } from "@/components/ui";
+import { Avatar, Moment, coins } from "@/components/ui";
+import { Logo } from "@/components/brand";
+import { Mascot, type Mood } from "@/components/mascot";
 import { Appear, PopItem, RiseItem } from "@/components/motion";
 import { AnswerDots, PotBowl } from "@/components/pot";
 
@@ -433,15 +435,20 @@ function Stage(props: { code: string; list: HostQuestion[]; people: number; seat
   let eyebrow: string;
   let title: string;
   let sub: string;
+  // The coconut on the stage says how the room feels: asleep while nothing is happening, wide-eyed while a question runs, happy when someone is paid.
+  let mood: Mood = "sleepy";
   if (inFlight && inFlight.status === Status.OPEN) {
+    mood = "surprised";
     eyebrow = "Live";
     title = `Question ${Number(inFlight.id) + 1} is live.`;
     sub = `${Math.max(0, inFlight.lockAt - now)} s to answer.`;
   } else if (inFlight && inFlight.status !== Status.RESOLVED) {
+    mood = "surprised";
     eyebrow = "Time's up";
     title = "Which answer was right?";
     sub = `Pick it on question ${Number(inFlight.id) + 1} below. The pot goes to whoever chose it.`;
   } else if (inFlight) {
+    mood = "happy";
     eyebrow = "Result set";
     title = "Winners are being paid.";
     sub = "It happens on its own once nobody can disagree any more.";
@@ -454,6 +461,7 @@ function Stage(props: { code: string; list: HostQuestion[]; people: number; seat
     title = "Waiting for players.";
     sub = `Show them the code ${code}${seats ? `. ${seats} ${seats === 1 ? "seat" : "seats"} in this room.` : "."}`;
   } else if (nextId !== undefined) {
+    mood = "happy";
     eyebrow = "Ready";
     title = `${people} in the room. Start when you like.`;
     sub = `Question ${Number(nextId) + 1} is next.`;
@@ -463,9 +471,12 @@ function Stage(props: { code: string; list: HostQuestion[]; people: number; seat
     sub = "Write more below to keep the room going.";
   }
   const potCoins = inFlight ? Number(inFlight.pot / 10n ** 18n) : 0;
+  const live = !!inFlight && inFlight.status === Status.OPEN;
+  const secondsLeft = inFlight ? Math.max(0, inFlight.lockAt - now) : 0;
 
   return (
-    <section className="mb-5 flex items-center gap-5 overflow-hidden rounded-[22px] border border-line p-5 lg:p-6" style={{ background: "linear-gradient(120deg, #FFF9F3 0%, #FFEBDD 100%)" }} data-testid="stage">
+    <section className="mb-5 flex items-center gap-4 overflow-hidden rounded-[22px] border border-line p-5 lg:gap-5 lg:p-6" style={{ background: "linear-gradient(120deg, #FFF9F3 0%, #FFEBDD 100%)" }} data-testid="stage">
+      <Mascot mood={mood} size={104} disc className="hidden md:grid" />
       <div className="min-w-0 flex-1">
         <Appear key={title}>
           <p className="flex items-center gap-2 text-[12px] font-black uppercase tracking-wide text-coral-d">
@@ -475,12 +486,18 @@ function Stage(props: { code: string; list: HostQuestion[]; people: number; seat
           <h1 className="mt-1 text-[clamp(22px,2.4vw,34px)] font-black leading-[1.1] tracking-[-.02em]">{title}</h1>
         </Appear>
         <p className="mt-1.5 text-[15px] font-extrabold text-ink-2 tabular-nums">{sub}</p>
-        {inFlight && inFlight.status === Status.OPEN && (
+        {live && (
           <div className="mt-3">
             <AnswerDots answered={inFlight.answerers} of={inFlight.charged} />
           </div>
         )}
       </div>
+      {live && (
+        <div className="hidden shrink-0 flex-col items-center lg:flex" data-testid="stage-clock">
+          <span className={`text-[72px] font-black leading-none tracking-[-.04em] tabular-nums ${secondsLeft <= 5 ? "text-coral-d" : "text-coral"}`}>{secondsLeft}</span>
+          <span className="text-[12px] font-extrabold text-ink-3">seconds left</span>
+        </div>
+      )}
       <div className="hidden shrink-0 flex-col items-center sm:flex">
         <div className="h-[170px] w-[250px]">
           <PotScene coins={potCoins} />
@@ -540,16 +557,17 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, questions, now]);
 
-  if (roomQ.isLoading || (room && !view)) return <p className="p-10 text-center font-extrabold text-ink-3">Finding room {code}…</p>;
-  if (room === null || roomQ.isError) return <p className="p-10 text-center font-extrabold text-ink-2">Room {code} not found.</p>;
+  const alone = (moment: React.ReactNode) => (
+    <main className="flex min-h-[100dvh] flex-col px-[clamp(20px,5vw,72px)] py-[clamp(18px,2vw,28px)]">
+      <Logo />
+      {moment}
+    </main>
+  );
+  if (roomQ.isLoading || (room && !view)) return alone(<Moment mood="surprised" level={1} title={`Finding room ${code}…`} />);
+  if (room === null || roomQ.isError) return alone(<Moment mood="oops" level={1} title={`Room ${code} not found.`} body="Check the code, or start a new room from the home page." />);
   if (!view || !room) return null;
   if (view.host.toLowerCase() !== me.toLowerCase()) {
-    return (
-      <main className="mx-auto max-w-md p-10 text-center">
-        <h1 className="text-[24px] font-black">This room is hosted from another tab.</h1>
-        <p className="mt-2 font-extrabold text-ink-2">Until sign-in is set up, a room can only be run from the tab that created it.</p>
-      </main>
-    );
+    return alone(<Moment mood="oops" level={1} title="This room is hosted from another tab." body="Until sign-in is set up, a room can only be run from the tab that created it." />);
   }
 
   const list = questions ?? [];
@@ -566,14 +584,20 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
   const seats = view.sponsored && view.startingDeposit > 0n ? view.people.length + Number((qsQ.data?.budget ?? 0n) / view.startingDeposit) : null;
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      <aside className="flex w-full shrink-0 flex-col gap-5 border-b border-line bg-card p-5 lg:w-[260px] lg:border-b-0 lg:border-r">
-        <p className="text-[15px] font-black text-coral">Kokonad · host</p>
+    <div className="flex min-h-screen flex-col lg:flex-row lg:items-start">
+      <aside className="flex w-full shrink-0 flex-col gap-5 overflow-x-hidden border-b border-line bg-card p-5 lg:sticky lg:top-0 lg:h-[100dvh] lg:w-[260px] lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <div className="flex items-center justify-between">
+          <Logo />
+          <span className="rounded-full bg-peach px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-coral-d">Host</span>
+        </div>
         <div className="rounded-[22px] border border-line bg-surface p-4 text-center">
           <p className="text-[12px] font-bold text-ink-3">Room code</p>
           <p className="text-[34px] font-black tracking-[.16em]">{code}</p>
           <JoinLink code={code} />
         </div>
+        <a href={`/host/${code}/screen`} target="_blank" rel="noreferrer" className="ledge -mt-2 rounded-full border border-line bg-surface px-4 py-2.5 text-center text-[13px] font-black">
+          Open the big screen ↗
+        </a>
         <div className="text-[14px] font-extrabold text-ink-2">
           <p>
             Budget left <b className="float-right text-ink tabular-nums">{coins(qsQ.data?.budget ?? 0n)}</b>
@@ -593,7 +617,12 @@ function HostRoomFor({ code, me }: { code: string; me: Address }) {
           ))}
         </ul>
         {view.people.length === 0 && <p className="text-[13px] font-bold text-ink-3">Nobody yet. They show up here the moment they join.</p>}
-        <p className="mt-auto rounded-[14px] bg-peach p-3 text-[12px] font-bold text-ink-2">Keep this tab open: it opens questions and pays out winners for you.</p>
+        {/* The coconut peeks over the note from the corner of the sidebar (DESIGN.md §6). */}
+        <div className="relative mt-auto hidden pt-[74px] lg:block">
+          <Mascot mood={inFlight ? (inFlight.status === Status.RESOLVED ? "happy" : "surprised") : view.people.length === 0 ? "sleepy" : "happy"} size={128} className="!absolute -right-3 top-0" />
+          <p className="relative rounded-[14px] bg-peach p-3 text-[12px] font-bold text-ink-2">Keep this tab open: it opens questions and pays out winners for you.</p>
+        </div>
+        <p className="mt-auto rounded-[14px] bg-peach p-3 text-[12px] font-bold text-ink-2 lg:hidden">Keep this tab open: it opens questions and pays out winners for you.</p>
       </aside>
       <main className="min-w-0 flex-1 p-5 lg:p-8">
         <p className="mb-4 rounded-[14px] bg-bg-2 px-4 py-2 text-[13px] font-bold text-ink-3 lg:hidden">Best on a laptop.</p>

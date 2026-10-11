@@ -2,6 +2,9 @@
 
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { continueAsGuest, signInEnabled } from "@/lib/signer";
+import { Logo } from "./brand";
+import { Mascot } from "./mascot";
+import { Appear } from "./motion";
 import { PrimaryButton, RoomHeader, Screen } from "./ui";
 
 type Props = { code?: string; title: string; body: string };
@@ -20,12 +23,13 @@ function SignInScreen({ code, title, body }: Props) {
   const { setShowAuthFlow, sdkHasLoaded } = useDynamicContext();
   return (
     <Screen>
-      {code ? <RoomHeader code={code} /> : <p className="text-[15px] font-black text-coral">Kokonad</p>}
-      <div className="mt-10 flex flex-1 flex-col gap-4">
-        <div>
-          <h1 className="text-[30px] font-black leading-[1.1] tracking-[-.02em]">{title}</h1>
-          <p className="mt-2 font-extrabold text-ink-2">{body}</p>
-        </div>
+      {code ? <RoomHeader code={code} /> : <Logo className="self-center" />}
+      <div className="flex flex-1 flex-col gap-4">
+        <Appear className="flex flex-1 flex-col items-center justify-center gap-3 py-4 text-center">
+          <Mascot mood="surprised" size={156} disc priority />
+          <h1 className="mt-1 text-[30px] font-black leading-[1.1] tracking-[-.02em]">{title}</h1>
+          <p className="max-w-[28ch] font-extrabold text-ink-2 [text-wrap:pretty]">{body}</p>
+        </Appear>
         <div className="mt-auto flex flex-col gap-3">
           <PrimaryButton onClick={() => setShowAuthFlow(true)} disabled={!sdkHasLoaded}>
             {sdkHasLoaded ? "Continue" : "One moment…"}

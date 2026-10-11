@@ -78,17 +78,50 @@ function build(host: HTMLDivElement, still: boolean): Stage | null {
   const made: Array<THREE.BufferGeometry | THREE.Material> = [];
   const keep = <T extends THREE.BufferGeometry | THREE.Material>(x: T): T => (made.push(x), x);
 
-  // The shell: a quarter-ellipse spun around the axis. Brown outside, coconut-white inside, a pale rim.
+  // The shell: a quarter-ellipse spun around the axis, drawn the way the mascot is drawn: warm brown husk
+  // with darker fibres, a thick dark outline, bright coconut flesh inside and a pale lip.
   const profile = Array.from({ length: 25 }, (_, k) => {
     const a = (k / 24) * (Math.PI / 2);
     return new THREE.Vector2(Math.sin(a) * R, -Math.cos(a) * H);
   });
   const shell = keep(new THREE.LatheGeometry(profile, 64));
-  pot.add(new THREE.Mesh(shell, keep(new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 0.9 }))));
-  const flesh = new THREE.Mesh(shell, keep(new THREE.MeshStandardMaterial({ color: 0xfff3e3, roughness: 0.75, side: THREE.BackSide })));
-  flesh.scale.setScalar(0.955);
+  // Fibres are painted here, not fetched: a small canvas of streaks wrapped around the husk.
+  const husk = document.createElement("canvas");
+  husk.width = 256;
+  husk.height = 128;
+  const ink = husk.getContext("2d");
+  if (ink) {
+    ink.fillStyle = "#b9682f";
+    ink.fillRect(0, 0, 256, 128);
+    for (let k = 0; k < 150; k++) {
+      const x = (Math.sin(k * 91.7) * 0.5 + 0.5) * 256;
+      const y = (Math.sin(k * 37.3) * 0.5 + 0.5) * 128;
+      const len = 14 + (Math.sin(k * 13.1) * 0.5 + 0.5) * 30;
+      ink.strokeStyle = k % 3 === 0 ? "rgba(255,225,190,.30)" : "rgba(86,40,16,.34)";
+      ink.lineWidth = 1 + (k % 2);
+      ink.beginPath();
+      ink.moveTo(x, y);
+      ink.quadraticCurveTo(x + 3, y + len / 2, x - 2, y + len);
+      ink.stroke();
+    }
+  }
+  const fibres = new THREE.CanvasTexture(husk);
+  fibres.wrapS = THREE.RepeatWrapping;
+  fibres.repeat.set(3, 1);
+  fibres.colorSpace = THREE.SRGBColorSpace;
+  pot.add(new THREE.Mesh(shell, keep(new THREE.MeshStandardMaterial({ map: fibres, roughness: 0.95 }))));
+  const outline = new THREE.Mesh(shell, keep(new THREE.MeshBasicMaterial({ color: 0x3b1f14, side: THREE.BackSide })));
+  outline.scale.set(1.045, 1.05, 1.045);
+  outline.position.y = 0.012;
+  pot.add(outline);
+  const flesh = new THREE.Mesh(shell, keep(new THREE.MeshStandardMaterial({ color: 0xfffaf0, roughness: 0.7, side: THREE.BackSide, emissive: 0xfff1dc, emissiveIntensity: 0.42 })));
+  flesh.scale.setScalar(0.93);
   pot.add(flesh);
-  const rim = new THREE.Mesh(keep(new THREE.TorusGeometry(R * 0.978, 0.045, 12, 72)), keep(new THREE.MeshStandardMaterial({ color: 0xf3dcc3, roughness: 0.8 })));
+  // The lip: the cut face of the coconut, flesh-white and as thick as the flesh.
+  const lip = new THREE.Mesh(keep(new THREE.RingGeometry(R * 0.925, R * 1.0, 72)), keep(new THREE.MeshStandardMaterial({ color: 0xfffaf0, roughness: 0.6, emissive: 0xfff1dc, emissiveIntensity: 0.5 })));
+  lip.rotation.x = -Math.PI / 2;
+  pot.add(lip);
+  const rim = new THREE.Mesh(keep(new THREE.TorusGeometry(R * 1.02, 0.04, 12, 72)), keep(new THREE.MeshBasicMaterial({ color: 0x3b1f14 })));
   rim.rotation.x = Math.PI / 2;
   pot.add(rim);
   const shadow = new THREE.Mesh(keep(new THREE.CircleGeometry(R * 0.95, 48)), keep(new THREE.MeshBasicMaterial({ color: 0x3b1f14, transparent: true, opacity: 0.09 })));
@@ -97,7 +130,7 @@ function build(host: HTMLDivElement, still: boolean): Stage | null {
   scene.add(shadow);
 
   const coinShape = keep(new THREE.CylinderGeometry(0.27, 0.27, 0.07, 32));
-  const gold = keep(new THREE.MeshStandardMaterial({ color: 0xf2b72b, roughness: 0.34, metalness: 0.25, emissive: 0x7a4a00, emissiveIntensity: 0.18 }));
+  const gold = keep(new THREE.MeshStandardMaterial({ color: 0xf7c23a, roughness: 0.3, metalness: 0.2, emissive: 0x9a5c00, emissiveIntensity: 0.3 }));
   const coins: THREE.Mesh[] = [];
 
   let width = 0;
@@ -183,6 +216,7 @@ function build(host: HTMLDivElement, still: boolean): Stage | null {
       resize.disconnect();
       for (const coin of coins) gsap.killTweensOf([coin.position, coin.scale]);
       for (const x of made) x.dispose();
+      fibres.dispose();
       renderer.dispose();
       canvas.remove();
     },
