@@ -5,6 +5,11 @@ import { Koko } from "../Koko";
 import { BIG, bigClip, PHONE, phoneClip, TOP } from "../layout";
 import { Backdrop, Phone, Screen, Source, Speed, StepChip } from "../Stage";
 import { SYNC } from "../theme";
+import { cues, spoken } from "../voice";
+
+const LINES = ["join-scan", "join-free"] as const;
+export const JOIN_FRAMES = spoken(LINES) + 20;
+const say = cues(LINES, JOIN_FRAMES);
 
 export const Join: React.FC = () => {
   const { fps } = useVideoConfig();
@@ -39,7 +44,7 @@ export const Join: React.FC = () => {
       <Speed style={{ left: 1516, top: TOP - 50 }}>×2</Speed>
       <Koko
         name="Koko: scan the code"
-        durationInFrames={Math.round(5 * fps)}
+        {...say[0]}
         premountFor={fps}
         mood="happy"
         layout="row"
@@ -48,13 +53,10 @@ export const Join: React.FC = () => {
         fontSize={44}
         enter
         style={{ left: 560, top: 770 }}
-      >
-        Players scan the code on the big screen. Nothing to install.
-      </Koko>
+      />
       <Koko
         name="Koko: no wallet, no gas"
-        from={Math.round(5 * fps)}
-        durationInFrames={Math.round(6 * fps)}
+        {...say[1]}
         premountFor={fps}
         mood="surprised"
         layout="row"
@@ -63,9 +65,7 @@ export const Join: React.FC = () => {
         fontSize={44}
         enter={false}
         style={{ left: 560, top: 770 }}
-      >
-        No wallet, no gas. Type a name, and your coins from the host are already waiting.
-      </Koko>
+      />
     </Backdrop>
   );
 };

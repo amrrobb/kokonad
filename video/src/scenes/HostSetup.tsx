@@ -4,6 +4,11 @@ import { staticFile, useVideoConfig } from "remotion";
 import { Koko } from "../Koko";
 import { HOST, hostClip, TOP } from "../layout";
 import { Backdrop, Screen, Source, Speed, StepChip } from "../Stage";
+import { cues, spoken } from "../voice";
+
+const LINES = ["host-fund", "host-draft", "host-seal"] as const;
+export const HOST_SETUP_FRAMES = spoken(LINES) + 12;
+const say = cues(LINES, HOST_SETUP_FRAMES);
 
 export const HostSetup: React.FC = () => {
   const { fps } = useVideoConfig();
@@ -16,7 +21,7 @@ export const HostSetup: React.FC = () => {
           name="Host: create room, seal questions"
           src={staticFile("footage/host.mp4")}
           trimBefore={Math.round(10.5 * fps)}
-          durationInFrames={Math.round(15.6 * fps)}
+          durationInFrames={Math.round(HOST_SETUP_FRAMES * 1.3)}
           playbackRate={1.3}
           premountFor={fps}
           muted
@@ -26,7 +31,7 @@ export const HostSetup: React.FC = () => {
       <Speed style={{ left: 1262, top: TOP - 50 }}>×1.3</Speed>
       <Koko
         name="Koko: fund the room"
-        durationInFrames={Math.round(5.4 * fps)}
+        {...say[0]}
         premountFor={fps}
         mood="happy"
         layout="stack"
@@ -34,14 +39,35 @@ export const HostSetup: React.FC = () => {
         bubbleWidth={470}
         fontSize={44}
         enter
-        style={{ left: 1392, top: 150, width: 470, height: 860, justifyContent: "flex-end" }}
-      >
-        A host starts a room and funds it with coins. Everyone else plays for free.
-      </Koko>
+        style={{
+          left: 1392,
+          top: 150,
+          width: 470,
+          height: 860,
+          justifyContent: "flex-end",
+        }}
+      />
+      <Koko
+        name="Koko: a first draft"
+        {...say[1]}
+        premountFor={fps}
+        mood="happy"
+        layout="stack"
+        size={330}
+        bubbleWidth={470}
+        fontSize={44}
+        enter={false}
+        style={{
+          left: 1392,
+          top: 150,
+          width: 470,
+          height: 860,
+          justifyContent: "flex-end",
+        }}
+      />
       <Koko
         name="Koko: sealed questions"
-        from={Math.round(5.4 * fps)}
-        durationInFrames={Math.round(6.6 * fps)}
+        {...say[2]}
         premountFor={fps}
         mood="surprised"
         layout="stack"
@@ -49,10 +75,14 @@ export const HostSetup: React.FC = () => {
         bubbleWidth={470}
         fontSize={44}
         enter={false}
-        style={{ left: 1392, top: 150, width: 470, height: 860, justifyContent: "flex-end" }}
-      >
-        The questions are sealed on Monad before anyone joins. Short on time? AI drafts them from one line.
-      </Koko>
+        style={{
+          left: 1392,
+          top: 150,
+          width: 470,
+          height: 860,
+          justifyContent: "flex-end",
+        }}
+      />
     </Backdrop>
   );
 };

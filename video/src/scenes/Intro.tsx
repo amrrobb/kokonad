@@ -3,6 +3,11 @@ import { Easing, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig }
 import { Koko } from "../Koko";
 import { Backdrop } from "../Stage";
 import { C } from "../theme";
+import { cues, spoken } from "../voice";
+
+const LINES = ["intro-hello", "intro-what"] as const;
+export const INTRO_FRAMES = spoken(LINES) + 14;
+const say = cues(LINES, INTRO_FRAMES);
 
 export const Intro: React.FC = () => {
   const frame = useCurrentFrame();
@@ -19,7 +24,10 @@ export const Intro: React.FC = () => {
           justifyContent: "center",
           alignItems: "center",
           gap: 22,
-          opacity: interpolate(frame, [0, 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+          opacity: interpolate(frame, [0, 12], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
           translate: interpolate(frame, [0, 16], ["0px -30px", "0px 0px"], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
@@ -32,7 +40,7 @@ export const Intro: React.FC = () => {
       </div>
       <Koko
         name="Koko: hello"
-        durationInFrames={Math.round(3.2 * fps)}
+        {...say[0]}
         premountFor={fps}
         mood="happy"
         layout="row"
@@ -41,13 +49,10 @@ export const Intro: React.FC = () => {
         fontSize={64}
         enter
         style={{ left: 210, top: 330 }}
-      >
-        Hi, I'm Koko! Let me walk you through a game.
-      </Koko>
+      />
       <Koko
         name="Koko: what it is"
-        from={Math.round(3.2 * fps)}
-        durationInFrames={Math.round(5.4 * fps)}
+        {...say[1]}
         premountFor={fps}
         mood="surprised"
         layout="row"
@@ -56,9 +61,7 @@ export const Intro: React.FC = () => {
         fontSize={58}
         enter={false}
         style={{ left: 210, top: 330 }}
-      >
-        Kokonad: live guessing games for community events. The pot is split on Monad by a contract, not by the host.
-      </Koko>
+      />
       <div
         style={{
           position: "absolute",
@@ -69,7 +72,7 @@ export const Intro: React.FC = () => {
           fontWeight: 800,
           fontSize: 34,
           color: C.ink2,
-          opacity: interpolate(frame, [3.6 * fps, 4.1 * fps], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+          opacity: interpolate(frame, [say[1].from + 12, say[1].from + 27], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
         }}
       >
         Everything you are about to see was recorded on kokonad.robbyn.xyz, on Monad testnet.

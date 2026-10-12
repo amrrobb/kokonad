@@ -5,8 +5,13 @@ import { Koko } from "../Koko";
 import { TOP } from "../layout";
 import { Backdrop, Phone, Screen, Source, StepChip } from "../Stage";
 import { at } from "../theme";
+import { cues, spoken } from "../voice";
 
-/** T = 13 to 22: phones open their answers, the host picks the result. Host window at 0.8x, two phones at 0.95x. */
+const LINES = ["reveal-open", "reveal-host"] as const;
+export const REVEAL_FRAMES = spoken(LINES) + 12;
+const say = cues(LINES, REVEAL_FRAMES);
+
+/** From T = 13, at real speed: phones open their answers, then the host picks the result (near T = 19). */
 export const Reveal: React.FC = () => {
   const { fps } = useVideoConfig();
   return (
@@ -18,10 +23,16 @@ export const Reveal: React.FC = () => {
           name="Host: which answer was right"
           src={staticFile("footage/host.mp4")}
           trimBefore={Math.round(at("host", 13) * fps)}
-          durationInFrames={Math.round(9 * fps)}
+          durationInFrames={REVEAL_FRAMES}
           premountFor={fps}
           muted
-          style={{ position: "absolute", left: 0, top: 0, width: 1024, height: 640 }}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 1024,
+            height: 640,
+          }}
         />
       </Screen>
       <Phone label="Eka" width={342} height={741} delay={4} style={{ left: 1130, top: TOP }}>
@@ -29,10 +40,16 @@ export const Reveal: React.FC = () => {
           name="Eka: answer opens"
           src={staticFile("footage/eka.mp4")}
           trimBefore={Math.round(at("eka", 13) * fps)}
-          durationInFrames={Math.round(9 * fps)}
+          durationInFrames={REVEAL_FRAMES}
           premountFor={fps}
           muted
-          style={{ position: "absolute", left: 0, top: 0, width: 342, height: 741 }}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 342,
+            height: 741,
+          }}
         />
       </Phone>
       <Phone label="Gita: no answer" width={342} height={741} delay={8} style={{ left: 1512, top: TOP }}>
@@ -40,15 +57,21 @@ export const Reveal: React.FC = () => {
           name="Gita: sat out"
           src={staticFile("footage/gita.mp4")}
           trimBefore={Math.round(at("gita", 13) * fps)}
-          durationInFrames={Math.round(9 * fps)}
+          durationInFrames={REVEAL_FRAMES}
           premountFor={fps}
           muted
-          style={{ position: "absolute", left: 0, top: 0, width: 342, height: 741 }}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 342,
+            height: 741,
+          }}
         />
       </Phone>
       <Koko
         name="Koko: answers open"
-        durationInFrames={Math.round(4.2 * fps)}
+        {...say[0]}
         premountFor={fps}
         mood="surprised"
         layout="row"
@@ -57,13 +80,10 @@ export const Reveal: React.FC = () => {
         fontSize={42}
         enter
         style={{ left: 70, top: 828 }}
-      >
-        Time's up. Every phone opens its sealed answer on its own.
-      </Koko>
+      />
       <Koko
         name="Koko: host sets the result"
-        from={Math.round(4.2 * fps)}
-        durationInFrames={Math.round(4.8 * fps)}
+        {...say[1]}
         premountFor={fps}
         mood="happy"
         layout="row"
@@ -72,9 +92,7 @@ export const Reveal: React.FC = () => {
         fontSize={42}
         enter={false}
         style={{ left: 70, top: 828 }}
-      >
-        The host sets what really happened. That is the one thing a person decides.
-      </Koko>
+      />
     </Backdrop>
   );
 };

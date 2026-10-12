@@ -1,0 +1,68 @@
+{
+  "intro-hello": {
+    "text": "Hi, I'm Koko! Let me walk you through a game."
+  },
+  "intro-what": {
+    "text": "Kokonad: live guessing games for community events. The pot is split on Monad by a contract, not by the host.",
+    "say": "Koko-nad: live guessing games for community events. The pot is split on Monad by a contract, not by the host."
+  },
+  "host-fund": {
+    "text": "A host starts a room and funds it with coins. Everyone else plays for free."
+  },
+  "host-draft": {
+    "text": "Short on time? AI drafts the questions from one line."
+  },
+  "host-seal": {
+    "text": "Then they are sealed on Monad, before anyone joins."
+  },
+  "join-scan": {
+    "text": "Players scan the code on the big screen. Nothing to install."
+  },
+  "join-free": {
+    "text": "No wallet, no gas. Type a name, and your coins from the host are already waiting."
+  },
+  "question-open": {
+    "text": "A question opens. One coin from each player drops into the pot."
+  },
+  "question-seal": {
+    "text": "Pick, then lock. Your answer is sealed: nobody can peek or copy it, not even the host."
+  },
+  "question-clock": {
+    "text": "When the clock runs out, no more answers get in."
+  },
+  "reveal-open": {
+    "text": "Time's up. Every phone opens its sealed answer on its own."
+  },
+  "reveal-host": {
+    "text": "The host sets what really happened. That is the one thing a person decides."
+  },
+  "result-split": {
+    "text": "The contract splits the pot between everyone who was right. Eka takes all 3 coins.",
+    "say": "The contract splits the pot between everyone who was right. Ekka takes all 3 coins."
+  },
+  "result-lost": {
+    "text": "Wrong, or sat it out? Your coin stays in the pot."
+  },
+  "payout-wait": {
+    "text": "The contract waits 60 seconds before it pays: its window for disputes."
+  },
+  "payout-land": {
+    "text": "Then the coins land. No one has to claim anything."
+  },
+  "payout-standings": {
+    "text": "And the standings update for the whole room."
+  },
+  "monad-tx": {
+    "text": "That payout? A real transaction on Monad: 3 coins from the room to Eka.",
+    "say": "That payout? A real transaction on Monad: 3 coins from the room to Ekka."
+  },
+  "monad-count": {
+    "text": "Every seal, reveal and payout is on-chain. This game was 23 transactions."
+  },
+  "monad-gas": {
+    "text": "Players never pay gas. They sign, a relayer sends, and Monad's fast blocks keep the room in sync."
+  },
+  "outro-try": {
+    "text": "Open a room and try it. See you at your next meetup!"
+  }
+}

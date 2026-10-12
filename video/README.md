@@ -5,13 +5,13 @@ on the public site, with Koko (the mascot) walking through it scene by scene.
 
 ```sh
 npm install
-npm run dev                     # Remotion Studio: preview, edit lines and timings, render
+npm run dev                     # Remotion Studio: preview, edit layout and timings, render
 npx remotion render KokonadDemo out/kokonad-demo.mp4
 ```
 
 ## What is in it
 
-`KokonadDemo` (1920x1080, 30 fps, 94.2 s) is nine scenes joined by short fades in `src/Demo.tsx`. Each scene is its
+`KokonadDemo` (1920x1080, 30 fps, about 103 s, with Koko's voice and a music bed) is nine scenes joined by short fades in `src/Demo.tsx`. Each scene is its
 own file in `src/scenes/` and is also registered on its own (folder "Scenes" in Studio), so it can be opened
 and edited alone.
 
@@ -27,8 +27,35 @@ and edited alone.
 | 7 Monad | the payout transaction on the block explorer |
 | Outro | where to try it |
 
-Koko's lines are the text between `<Koko>` tags: edit them in the scene file or in Studio's inspector. The pose
-is the `mood` prop (`happy`, `surprised`, `oops`, `sleepy`), one of the four drawn poses in `public/mascot/`.
+The pose is the `mood` prop (`happy`, `surprised`, `oops`, `sleepy`), one of the four drawn poses in
+`public/mascot/`.
+
+## Koko's lines and voice
+
+Every line is an entry in `src/lines.json`, and a `<Koko line="...">` shows and speaks it. The voice is generated,
+not recorded:
+
+```sh
+python3 -m venv .venv-voice && .venv-voice/bin/pip install edge-tts    # once
+.venv-voice/bin/python scripts/voice.py                                # after changing any line
+```
+
+The script speaks each changed line with [edge-tts](https://github.com/rany2/edge-tts) (voice `en-US-EmmaNeural`;
+`VOICE=...` picks another, `--out <dir>` auditions one without touching the repo), trims the silence, and writes
+`public/voice/<id>.mp3` and the line's length to `src/voice.json`. Scenes are timed from those lengths
+(`src/voice.ts`): a scene lasts as long as its lines take to say, and the text is typed at the pace of the voice.
+So the order is always: edit `lines.json`, run the script, then look at the scene. A line may carry `"say"`, the
+spelling the voice reads when it differs from the bubble ("Ekka" for Eka, which it otherwise spells out).
+
+edge-tts uses the read-aloud voices of Microsoft Edge through an endpoint that is not a documented public API. It
+needs no key, which is why it is here; a recorded voice or a licensed one can replace the files in
+`public/voice/` as long as `voice.json` gets the new lengths.
+
+## Music
+
+`public/music/bgm.mp3` is written note by note by `scripts/bgm.py` (a marimba loop; needs numpy), so it has no
+licence to keep track of. `src/Demo.tsx` plays it well under the voice and brings it up after the last line. To
+use a real track, replace the file and write its source and licence here.
 
 ## The footage
 
@@ -42,7 +69,7 @@ The recordings are not in git (about 70 MB). Put the five `.webm` files in `foot
 
 The five tabs started at different moments. `SYNC` in `src/theme.ts` is the second in each clip at which
 question 1's countdown showed 12; clips are trimmed with `at(clip, T)` so that side-by-side screens show the
-same instant. Speeds other than 1x carry a tag on screen (`×2`, `×13`).
+same instant. Speeds other than 1x carry a tag on screen (`×2`, `×11`).
 
 ## Rendering on this machine
 

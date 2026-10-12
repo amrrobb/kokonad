@@ -1,19 +1,12 @@
 import type React from "react";
-import {
-  Easing,
-  Img,
-  Interactive,
-  interpolate,
-  staticFile,
-  useCurrentFrame,
-  useVideoConfig,
-  type InteractivitySchema,
-} from "remotion";
+import { Easing, Img, Interactive, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig, type InteractivitySchema } from "remotion";
+import { Audio } from "@remotion/media";
 import { C, fontFamily, type Mood } from "./theme";
+import { LEAD, lineText, voiceFrames, type LineId } from "./voice";
 
 type KokoProps = {
-  /** What Koko says. */
-  readonly children: string;
+  /** Which line Koko says: an id from lines.json. The words and the voice both come from it. */
+  readonly line: LineId;
   readonly mood: Mood;
   /** Mascot size in px. */
   readonly size: number;
@@ -26,18 +19,18 @@ type KokoProps = {
   readonly style?: React.CSSProperties;
 };
 
-const CHARS_PER_SECOND = 42;
-
 /**
  * Koko, the guide. One instance per spoken line: the pose is one of the four drawn ones, the line is typed
- * into a speech bubble, and Koko bobs while idle and wobbles while the line is being typed.
+ * into a speech bubble as it is spoken, and Koko bobs while idle and wobbles while speaking.
  */
-const KokoInner: React.FC<KokoProps> = ({ children, mood, size, layout, bubbleWidth, fontSize, enter, style }) => {
+const KokoInner: React.FC<KokoProps> = ({ line, mood, size, layout, bubbleWidth, fontSize, enter, style }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const text = String(children);
-  const shown = Math.max(0, Math.min(text.length, Math.floor(((frame - 6) * CHARS_PER_SECOND) / fps)));
-  const talking = shown > 0 && shown < text.length;
+  const text = lineText(line);
+  const voiced = voiceFrames(line);
+  // The words stay a little ahead of the voice, so nobody waits for the bubble.
+  const shown = Math.max(0, Math.min(text.length, Math.ceil(((frame - LEAD) / (voiced * 0.85)) * text.length)));
+  const talking = frame >= LEAD && frame < LEAD + voiced;
   const bob = Math.sin((frame / fps) * Math.PI * 1.3) * 6;
   const wobble = talking ? Math.sin(frame * 0.85) : 0;
 
@@ -54,7 +47,10 @@ const KokoInner: React.FC<KokoProps> = ({ children, mood, size, layout, bubbleWi
           easing: Easing.out(Easing.back(2)),
           output: "perceptual-scale",
         }),
-        opacity: interpolate(frame, [0, 5], [enter ? 0 : 1, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        opacity: interpolate(frame, [0, 5], [enter ? 0 : 1, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        }),
       }}
     >
       <div
@@ -106,7 +102,10 @@ const KokoInner: React.FC<KokoProps> = ({ children, mood, size, layout, bubbleWi
           easing: Easing.out(Easing.back(1.6)),
           output: "perceptual-scale",
         }),
-        opacity: interpolate(frame, [2, 8], [enter ? 0 : 1, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        opacity: interpolate(frame, [2, 8], [enter ? 0 : 1, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        }),
       }}
     >
       {/* The whole line is laid out from frame 0, so the bubble never changes size while it is typed. */}
@@ -121,7 +120,12 @@ const KokoInner: React.FC<KokoProps> = ({ children, mood, size, layout, bubbleWi
           borderRight: `3px solid ${C.ink}`,
           borderBottom: `3px solid ${C.ink}`,
           ...(layout === "stack"
-            ? { right: Math.round(size * 0.42), bottom: -19, rotate: "45deg", boxShadow: `6px 6px 0 ${C.ink}` }
+            ? {
+                right: Math.round(size * 0.42),
+                bottom: -19,
+                rotate: "45deg",
+                boxShadow: `6px 6px 0 ${C.ink}`,
+              }
             : { left: -19, top: "50%", marginTop: -15, rotate: "135deg" }),
         }}
       />
@@ -141,15 +145,41 @@ const KokoInner: React.FC<KokoProps> = ({ children, mood, size, layout, bubbleWi
     >
       {layout === "stack" ? bubble : mascot}
       {layout === "stack" ? mascot : bubble}
+      <Sequence name="Koko's voice" from={LEAD} layout="none">
+        <Audio src={staticFile(`voice/${line}.mp3`)} />
+      </Sequence>
     </Interactive.Div>
   );
 };
 
 const kokoSchema = {
-  children: { type: "text-content", default: "", description: "What Koko says" },
-  size: { type: "number", default: 320, min: 120, max: 700, step: 10, description: "Mascot size", hiddenFromList: false },
-  bubbleWidth: { type: "number", default: 480, min: 240, max: 1400, step: 10, description: "Bubble width", hiddenFromList: false },
-  fontSize: { type: "number", default: 44, min: 28, max: 90, step: 1, description: "Text size", hiddenFromList: false },
+  size: {
+    type: "number",
+    default: 320,
+    min: 120,
+    max: 700,
+    step: 10,
+    description: "Mascot size",
+    hiddenFromList: false,
+  },
+  bubbleWidth: {
+    type: "number",
+    default: 480,
+    min: 240,
+    max: 1400,
+    step: 10,
+    description: "Bubble width",
+    hiddenFromList: false,
+  },
+  fontSize: {
+    type: "number",
+    default: 44,
+    min: 28,
+    max: 90,
+    step: 1,
+    description: "Text size",
+    hiddenFromList: false,
+  },
 } as const satisfies InteractivitySchema;
 
 export const Koko = Interactive.withSchema({

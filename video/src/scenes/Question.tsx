@@ -5,8 +5,19 @@ import { Koko } from "../Koko";
 import { BIG, bigClip, PHONE, phoneClip, TOP } from "../layout";
 import { Backdrop, Phone, Screen, Source, Speed, StepChip } from "../Stage";
 import { at } from "../theme";
+import { cues, spoken } from "../voice";
 
-/** Question 1 from the moment it opens (T = -6.8) at real speed, then the rest of the countdown at 2.5x. */
+const LINES = ["question-open", "question-seal", "question-clock"] as const;
+/** Frames at real speed, then the speed of the rest. */
+const REAL = 255;
+const FAST = 2;
+export const QUESTION_FRAMES = spoken(LINES) + 14;
+const say = cues(LINES, QUESTION_FRAMES);
+
+/**
+ * Question 1 from the moment it opens (T = -6.8) at real speed, then the rest of the countdown at 2x: the
+ * clock reaches zero (T = 12) while Koko says the third line.
+ */
 export const Question: React.FC = () => {
   const { fps } = useVideoConfig();
   return (
@@ -18,7 +29,7 @@ export const Question: React.FC = () => {
           name="Eka: question, pick, lock"
           src={staticFile("footage/eka.mp4")}
           trimBefore={Math.round(at("eka", -6.8) * fps)}
-          durationInFrames={Math.round(8.5 * fps)}
+          durationInFrames={REAL}
           premountFor={fps}
           muted
           style={phoneClip}
@@ -26,10 +37,10 @@ export const Question: React.FC = () => {
         <Video
           name="Eka: sealed, clock runs out"
           src={staticFile("footage/eka.mp4")}
-          from={Math.round(8.5 * fps)}
+          from={REAL}
           trimBefore={Math.round(at("eka", 1.7) * fps)}
-          durationInFrames={Math.round(13.75 * fps)}
-          playbackRate={2.5}
+          durationInFrames={Math.round((QUESTION_FRAMES - REAL) * FAST)}
+          playbackRate={FAST}
           premountFor={fps}
           muted
           style={phoneClip}
@@ -40,7 +51,7 @@ export const Question: React.FC = () => {
           name="Big screen: question opens"
           src={staticFile("footage/big-screen.mp4")}
           trimBefore={Math.round(at("big", -6.8) * fps)}
-          durationInFrames={Math.round(8.5 * fps)}
+          durationInFrames={REAL}
           premountFor={fps}
           muted
           style={bigClip}
@@ -48,21 +59,21 @@ export const Question: React.FC = () => {
         <Video
           name="Big screen: clock runs out"
           src={staticFile("footage/big-screen.mp4")}
-          from={Math.round(8.5 * fps)}
+          from={REAL}
           trimBefore={Math.round(at("big", 1.7) * fps)}
-          durationInFrames={Math.round(13.75 * fps)}
-          playbackRate={2.5}
+          durationInFrames={Math.round((QUESTION_FRAMES - REAL) * FAST)}
+          playbackRate={FAST}
           premountFor={fps}
           muted
           style={bigClip}
         />
       </Screen>
-      <Sequence name="Speed tag" from={Math.round(8.5 * fps)} layout="none">
-        <Speed style={{ left: 1490, top: TOP - 50 }}>×2.5</Speed>
+      <Sequence name="Speed tag" from={REAL} layout="none">
+        <Speed style={{ left: 1490, top: TOP - 50 }}>{`×${FAST}`}</Speed>
       </Sequence>
       <Koko
         name="Koko: one coin each"
-        durationInFrames={Math.round(4.6 * fps)}
+        {...say[0]}
         premountFor={fps}
         mood="surprised"
         layout="row"
@@ -71,13 +82,10 @@ export const Question: React.FC = () => {
         fontSize={44}
         enter
         style={{ left: 560, top: 770 }}
-      >
-        The host opens a question. One coin from every player drops into the pot.
-      </Koko>
+      />
       <Koko
         name="Koko: sealed answer"
-        from={Math.round(4.6 * fps)}
-        durationInFrames={Math.round(4.8 * fps)}
+        {...say[1]}
         premountFor={fps}
         mood="happy"
         layout="row"
@@ -86,13 +94,10 @@ export const Question: React.FC = () => {
         fontSize={44}
         enter={false}
         style={{ left: 560, top: 770 }}
-      >
-        Pick, then lock. Your answer is sealed: nobody can peek or copy it, not even the host.
-      </Koko>
+      />
       <Koko
         name="Koko: clock runs out"
-        from={Math.round(9.4 * fps)}
-        durationInFrames={Math.round(4.6 * fps)}
+        {...say[2]}
         premountFor={fps}
         mood="surprised"
         layout="row"
@@ -101,9 +106,7 @@ export const Question: React.FC = () => {
         fontSize={44}
         enter={false}
         style={{ left: 560, top: 770 }}
-      >
-        When the clock runs out, no more answers get in.
-      </Koko>
+      />
     </Backdrop>
   );
 };

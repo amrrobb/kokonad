@@ -4,9 +4,20 @@ import { Koko } from "../Koko";
 import { HOST, TOP } from "../layout";
 import { Backdrop, Screen, StepChip } from "../Stage";
 import { C } from "../theme";
+import { cues, spoken } from "../voice";
+
+const LINES = ["monad-tx", "monad-count", "monad-gas"] as const;
+export const MONAD_FRAMES = spoken(LINES) + 18;
+const say = cues(LINES, MONAD_FRAMES);
 
 /** A coral ring drawn around one row of the explorer page, with a plain label beside it. */
-const Ring: React.FC<{ readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly children: string }> = ({ x, y, w, h, children }) => {
+const Ring: React.FC<{
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+  readonly children: string;
+}> = ({ x, y, w, h, children }) => {
   const frame = useCurrentFrame();
   return (
     <div
@@ -25,7 +36,10 @@ const Ring: React.FC<{ readonly x: number; readonly y: number; readonly w: numbe
           easing: Easing.out(Easing.cubic),
           output: "perceptual-scale",
         }),
-        opacity: interpolate(frame, [0, 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        opacity: interpolate(frame, [0, 8], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        }),
       }}
     >
       <span
@@ -59,18 +73,27 @@ export const Monad: React.FC = () => {
     <Backdrop>
       <StepChip step="7">Every step is a Monad transaction</StepChip>
       <Screen kind="browser" label="Block explorer" url="testnet.monadvision.com/tx/0xce900d25…dc68" {...HOST} style={{ left: 60, top: TOP }}>
-        <Img src={staticFile("proof-tx.png")} style={{ position: "absolute", left: 0, top: 0, width: 1280, height: 800 }} />
-        <Sequence name="Ring: payout" durationInFrames={Math.round(4.6 * fps)} layout="none">
+        <Img
+          src={staticFile("proof-tx.png")}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 1280,
+            height: 800,
+          }}
+        />
+        <Sequence name="Ring: payout" durationInFrames={say[0].durationInFrames} layout="none">
           <Ring x={282} y={667} w={456} h={32}>
             3 KOKO, room → Eka
           </Ring>
         </Sequence>
-        <Sequence name="Ring: block" from={Math.round(4.6 * fps)} durationInFrames={Math.round(4.6 * fps)} layout="none">
+        <Sequence name="Ring: block" from={say[1].from} durationInFrames={say[1].durationInFrames} layout="none">
           <Ring x={282} y={331} w={244} h={26}>
             a block on Monad testnet
           </Ring>
         </Sequence>
-        <Sequence name="Ring: relayer" from={Math.round(9.2 * fps)} layout="none">
+        <Sequence name="Ring: relayer" from={say[2].from} layout="none">
           <Ring x={282} y={564} w={432} h={32}>
             sent by the relayer
           </Ring>
@@ -78,7 +101,7 @@ export const Monad: React.FC = () => {
       </Screen>
       <Koko
         name="Koko: that payout"
-        durationInFrames={Math.round(4.6 * fps)}
+        {...say[0]}
         premountFor={fps}
         mood="surprised"
         layout="stack"
@@ -86,14 +109,17 @@ export const Monad: React.FC = () => {
         bubbleWidth={470}
         fontSize={44}
         enter
-        style={{ left: 1392, top: 150, width: 470, height: 860, justifyContent: "flex-end" }}
-      >
-        That payout? A real transaction on Monad: 3 coins from the room to Eka.
-      </Koko>
+        style={{
+          left: 1392,
+          top: 150,
+          width: 470,
+          height: 860,
+          justifyContent: "flex-end",
+        }}
+      />
       <Koko
         name="Koko: 23 transactions"
-        from={Math.round(4.6 * fps)}
-        durationInFrames={Math.round(4.6 * fps)}
+        {...say[1]}
         premountFor={fps}
         mood="happy"
         layout="stack"
@@ -101,14 +127,17 @@ export const Monad: React.FC = () => {
         bubbleWidth={470}
         fontSize={44}
         enter={false}
-        style={{ left: 1392, top: 150, width: 470, height: 860, justifyContent: "flex-end" }}
-      >
-        Every seal, reveal and payout is on-chain. This game was 23 transactions.
-      </Koko>
+        style={{
+          left: 1392,
+          top: 150,
+          width: 470,
+          height: 860,
+          justifyContent: "flex-end",
+        }}
+      />
       <Koko
         name="Koko: nobody pays gas"
-        from={Math.round(9.2 * fps)}
-        durationInFrames={Math.round(5.2 * fps)}
+        {...say[2]}
         premountFor={fps}
         mood="happy"
         layout="stack"
@@ -116,10 +145,14 @@ export const Monad: React.FC = () => {
         bubbleWidth={470}
         fontSize={44}
         enter={false}
-        style={{ left: 1392, top: 150, width: 470, height: 860, justifyContent: "flex-end" }}
-      >
-        Players never pay gas. They sign, a relayer sends, and Monad's fast blocks keep the room in sync.
-      </Koko>
+        style={{
+          left: 1392,
+          top: 150,
+          width: 470,
+          height: 860,
+          justifyContent: "flex-end",
+        }}
+      />
     </Backdrop>
   );
 };

@@ -9,3 +9,6 @@ out
 # Recordings of the game are large; scripts/footage.sh rebuilds public/footage from footage-raw.
 footage-raw
 public/footage
+
+# The virtualenv scripts/voice.py runs in.
+.venv-voice

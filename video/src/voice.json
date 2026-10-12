@@ -1,0 +1,86 @@
+{
+  "intro-hello": {
+    "seconds": 2.906,
+    "key": "7794f200984bc686"
+  },
+  "intro-what": {
+    "seconds": 7.378,
+    "key": "0e96008be0972a0c"
+  },
+  "host-fund": {
+    "seconds": 4.419,
+    "key": "959fe3046ff4a6d9"
+  },
+  "host-draft": {
+    "seconds": 3.67,
+    "key": "c7ac87fc9b38b045"
+  },
+  "host-seal": {
+    "seconds": 2.908,
+    "key": "87de00b25042a107"
+  },
+  "join-scan": {
+    "seconds": 3.623,
+    "key": "81a3efed4ea30707"
+  },
+  "join-free": {
+    "seconds": 4.965,
+    "key": "2f4bd247d31434dc"
+  },
+  "question-open": {
+    "seconds": 4.208,
+    "key": "df16b6daf278f6c0"
+  },
+  "question-seal": {
+    "seconds": 6.005,
+    "key": "94499297eee25a7b"
+  },
+  "question-clock": {
+    "seconds": 2.684,
+    "key": "d7a22ea8ffb1daef"
+  },
+  "reveal-open": {
+    "seconds": 3.673,
+    "key": "ee385d505e29da0d"
+  },
+  "reveal-host": {
+    "seconds": 4.318,
+    "key": "1b1328a81ebb29b1"
+  },
+  "result-split": {
+    "seconds": 5.163,
+    "key": "a5d5f983aa823e81"
+  },
+  "result-lost": {
+    "seconds": 3.207,
+    "key": "b10ce0c1d9a55e5a"
+  },
+  "payout-wait": {
+    "seconds": 4.782,
+    "key": "1ed4893b21b618e2"
+  },
+  "payout-land": {
+    "seconds": 3.118,
+    "key": "21d75ffee53e6845"
+  },
+  "payout-standings": {
+    "seconds": 2.179,
+    "key": "1625ce9be9a9f1f4"
+  },
+  "monad-tx": {
+    "seconds": 5.167,
+    "key": "680e9975ba069b31"
+  },
+  "monad-count": {
+    "seconds": 5.062,
+    "key": "1b402d4e931ad030"
+  },
+  "monad-gas": {
+    "seconds": 5.782,
+    "key": "ff66df05a0a92593"
+  },
+  "outro-try": {
+    "seconds": 3.16,
+    "key": "518a2f17d313f004"
+  }
+}
