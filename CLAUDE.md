@@ -25,7 +25,7 @@ Live guessing games for community events on Monad testnet (10143). Host writes q
 
 ## Repo layout
 ```
-contracts/  indexer/  realtime/  backend/  web/  cre/  deployments/  docs/
+contracts/  indexer/  realtime/  backend/  web/  cre/  deployments/  docs/  video/
 ```
 See ARCHITECTURE §11. Don't add top-level folders without a reason written in the PR/commit.
 
