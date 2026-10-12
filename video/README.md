@@ -23,7 +23,7 @@ and edited alone.
 | 3 Question | phone and big screen while question 1 is live |
 | 4 Reveal | host sets the result; two phones |
 | 5 Result | three phones: right, wrong, sat out |
-| 6 Payout | the 60 s dispute window sped up, coins landing, standings |
+| 6 Payout | the contract's 60 s dispute window sped up, coins landing, standings |
 | 7 Monad | the payout transaction on the block explorer |
 | Outro | where to try it |
 

@@ -66,32 +66,58 @@ The contract isn't a judge, but it makes every trace visible: sealed questions, 
 2. **Speed is part of the game.** The "first N correct" rule is only fair when blocks are fast and ordering is unambiguous. A 30-second timer with 15-second confirmations isn't playable.
 3. **Our first users are Monad's own community.** We're members of DevWeb3Jogja, an official Metropolis community supporter. Kokonad's first sessions run at its events.
 
-**Numbers from a real session** (filled in after the tester session, pulled from the indexer, not hand-counted):
+**Numbers from one full game on the public site** (room `RN2U3C`, 12 Oct 2026; read from the relayer's ledger and the chain). The players were browsers driven by the end-to-end suite, not people: a session with people is still to come.
 
 | Metric | Value |
 |---|---|
-| Participants | _n_ |
-| Questions | _n_ |
-| Total transactions | _n_ |
-| Average tap → confirmation | _x_ s |
-| Coins moved | _n_ |
+| Participants | 3, plus the host and a fourth who was refused (room full) |
+| Questions | 2 (one paid out, one cancelled with every play refunded) |
+| Total transactions | 23, all on Monad testnet |
+| Gas | 0.97 MON, all paid by the relayer; players and host held 0 MON |
+| Coins moved | 60 KOKO funded by the host, 3 paid to the winner of question 1, 3 refunded on question 2 |
+| Average tap → confirmation | not measured |
+
+The pay-out of question 1: [`0xce900d25…dc68`](https://testnet.monadvision.com/tx/0xce900d25deeca7eb0ee12967981ac994f468a947c2600017abd4d057dbd3dc68). The same game is the footage of the demo video ([`video/`](video/)).
 
 ---
 
+## Status at submission (13 Oct 2026)
+
+The sections above describe the product as designed. This is what runs today on https://kokonad.robbyn.xyz and what does not.
+
+**Live**
+- Contracts on Monad testnet: `KokoToken`, `RoomFactory`, `Room` with the whole question lifecycle (sealed questions, one play per person into the pot, commit-reveal, result, 60-second dispute window, pay-out, cancel with refunds).
+- Relayer (ERC-2771): players and hosts sign, the relayer pays the gas, the contracts credit the signer.
+- Web app: host screen, participant screen, and a big screen for the projector (`/host/<CODE>/screen`).
+- Sponsored rooms, multiple-choice questions, "everyone right splits the pot".
+- First draft of the questions from a one-line brief (any OpenAI-compatible model; MiniMax M2.7 on the public site). The host edits and seals; the host always sets the result.
+- Sign-in through Dynamic (email or Google) is wired, next to "Just play on this device", which needs no sign-in. The end-to-end suite and the demo video use the second path; sign-in itself has not been through a full public game yet.
+
+**In the contracts, not in the app yet**
+- Pooled rooms, a host seed on a question, nearest-number and exact-guess questions, the "first N correct" rule.
+- Disputing a result: the contract enforces the 60-second window and the screens count it down, but the app has no button to disagree yet.
+
+**Not built**
+- Envio indexer: screens read the chain directly, one Multicall3 call per poll at a single block.
+- WebSocket server: screens poll every two seconds.
+- Mera salts: explored in a spike (`/spike`), not in the game. The salt of a sealed answer is random per question and stays on the player's device.
+- `HostRegistry` (host reputation), the end-of-session podium and recap, Chainlink CRE.
+
 ## Tech stack
 
-| Layer | Technology | Role |
-|---|---|---|
-| Chain | Monad testnet 10143 | source of truth for money, ordering, results |
-| Contracts | Solidity, Foundry | `KokoToken` (mock ERC-20 standing in for a stablecoin), `RoomFactory`, `Room` (commit-reveal, pot, resolve, dispute, settle), `HostRegistry` (reputation) |
-| Accounts & signing | **Dynamic** | social/passkey login, embedded wallet, delegated access so answering and revealing need no popups |
-| Key derivation | **Mera (passkey PRF)** | commit-reveal salt derived from the passkey per question; reveal works from another device, salt is never stored anywhere |
-| Data | **Envio HyperIndex** | everything the screens read: feed, distribution, leaderboard, host stats, session recap |
-| Realtime | WebSocket (Node) | synced countdown, feed, animation triggers; never decides money or results |
-| Question builder | LLM (KIMI / Claude) | suggested questions from free text; the host decides |
-| Auto-resolver | Chainlink CRE (stretch) | resolves markets with a public data source, e.g. score guessing |
-| Frontend | Next.js, wagmi/viem | one responsive app: host on laptop, participants on phones |
-| RPC | Quicknode / Chainstack | sponsored RPC, not public endpoints |
+| Layer | Technology | Role | Status |
+|---|---|---|---|
+| Chain | Monad testnet 10143 | source of truth for money, ordering, results | live |
+| Contracts | Solidity, Foundry | `KokoToken` (mock ERC-20 standing in for a stablecoin), `RoomFactory`, `Room` (commit-reveal, pot, resolve, dispute, settle) | live; `HostRegistry` not built |
+| Gas | ERC-2771 forwarder + relayer (Node, viem) | players sign, the relayer sends and pays; contracts read the signer | live |
+| Accounts & signing | **Dynamic** | email/Google sign-in with an embedded account; a guest account per tab as the quick way in | wired; guest path is the tested one |
+| Question builder | LLM over an OpenAI-compatible API | first draft of the questions from a one-line brief; the host decides | live |
+| Frontend | Next.js, wagmi/viem, Tailwind, motion, three.js | one responsive app: host on laptop, participants on phones, big screen on the projector | live |
+| RPC | QuickNode | keyed RPC, not a public endpoint | live |
+| Key derivation | **Mera (passkey PRF)** | commit-reveal salt derived from the passkey per question | spike only |
+| Data | **Envio HyperIndex** | feed, leaderboard, host stats, session recap | not built |
+| Realtime | WebSocket (Node) | synced countdown and animation triggers | not built (polling) |
+| Auto-resolver | Chainlink CRE | resolves markets with a public data source | not built (stretch) |
 
 Full architecture and component boundaries: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Product spec: [`docs/PRD.md`](docs/PRD.md). Wireframes and mockups: [`docs/`](docs/).
 
@@ -101,13 +127,13 @@ Full architecture and component boundaries: [`docs/ARCHITECTURE.md`](docs/ARCHIT
 
 ```
 contracts/     Foundry: contracts, tests, deploy scripts
-indexer/       Envio: config.yaml, schema.graphql, handlers
-realtime/      WebSocket server
-backend/       relayer: pays gas for signed player requests (Node, viem)
-web/           Next.js app (host + participant)
-cre/           Chainlink CRE workflow (stretch)
+backend/       relayer: pays gas for signed player requests, drafts questions (Node, viem)
+web/           Next.js app (host, participant, big screen) and the end-to-end suite
+video/         the demo video as a Remotion project
+deploy/        docker compose and the script that ships the public site
 deployments/   contract addresses per chain
-docs/          PRD, architecture, wireframes, mockups
+design/        the design handoff: mascot poses, logo, landing page
+docs/          PRD, architecture, design notes, mockups
 ```
 
 ---
@@ -119,10 +145,10 @@ docs/          PRD, architecture, wireframes, mockups
 | Forwarder (ERC-2771) | [`0x2EcC66246C9Bfe144E674231992EE4D0e965F6D4`](https://testnet.monadvision.com/address/0x2EcC66246C9Bfe144E674231992EE4D0e965F6D4) |
 | KokoToken | [`0x9Cb56A3d92A8A2b248c5d208DC517f993Dbed930`](https://testnet.monadvision.com/address/0x9Cb56A3d92A8A2b248c5d208DC517f993Dbed930) |
 | RoomFactory | [`0x4740943E5395CdC46cD41B5174e0A361A2E97bA9`](https://testnet.monadvision.com/address/0x4740943E5395CdC46cD41B5174e0A361A2E97bA9) |
-| HostRegistry | `0x…` |
+| HostRegistry | not deployed (not built) |
 
-Rooms are deployed per session by `RoomFactory`; each address is shown on the host screen and in the indexer.
-Addresses live in [`deployments/10143.json`](deployments/10143.json) (deployed 18 Sep 2026 from block 63559698; `HostRegistry` ships in week 2).
+Rooms are deployed per session by `RoomFactory`; a room's address is `RoomFactory.roomByCode(<CODE>)`.
+Addresses live in [`deployments/10143.json`](deployments/10143.json) (deployed 18 Sep 2026 from block 63559698).
 
 ### Contracts status (week 1)
 
@@ -152,16 +178,10 @@ testnet, a host and a player each holding 0 MON created, funded and joined a roo
 cd contracts && forge install && forge test
 forge script script/Deploy.s.sol --rpc-url $MONAD_TESTNET_RPC --broadcast
 
-# indexer
-cd indexer && pnpm install && pnpm dev
-
 # backend (relayer): the web app needs it running
 cd backend && pnpm install && pnpm test && pnpm test:integration
 cp .env.example .env   # RPC_URL, RELAYER_PRIVATE_KEY (wallet holding well over 10 MON), ALLOWED_ORIGIN=http://localhost:3000
 pnpm start             # listens on :8787
-
-# realtime
-cd realtime && pnpm install && pnpm dev
 
 # web
 cd web && pnpm install && cp .env.example .env.local && pnpm dev
@@ -172,7 +192,7 @@ browser via "Have a code? Join" (`/join`, then `/r/<CODE>`). Nobody needs MON: e
 browser and paid for by the relayer. Until Dynamic sign-in is configured, the account lives in the tab, so a
 reload starts a new one; a room can only be hosted from the tab that created it.
 
-Required environment variables are listed in each folder's `.env.example`: RPC URL, Dynamic environment ID, Envio endpoint, WebSocket endpoint, LLM API key.
+Required environment variables are listed in each folder's `.env.example`: RPC URL, relayer key, Dynamic environment ID, LLM API key.
 
 ## Trying it as a judge
 

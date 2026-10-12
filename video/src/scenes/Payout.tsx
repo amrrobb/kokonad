@@ -7,14 +7,14 @@ import { Backdrop, Phone, Screen, Source, Speed, StepChip } from "../Stage";
 import { at } from "../theme";
 
 /**
- * The 60 seconds in which players may disagree, at 13x (T = 22 to 80.5), then the payout at real speed:
+ * The contract's 60-second dispute window, at 13x (T = 22 to 80.5), then the payout at real speed:
  * coins fly into Eka's balance near T = 82. The big screen then cuts to the standings it showed a little later.
  */
 export const Payout: React.FC = () => {
   const { fps } = useVideoConfig();
   return (
     <Backdrop>
-      <StepChip step="6">60 seconds to disagree, then the coins land</StepChip>
+      <StepChip step="6">A 60-second dispute window, then the coins land</StepChip>
       <Source />
       <Phone label="Eka's phone" {...PHONE} style={{ left: 60, top: TOP }}>
         <Video
@@ -74,7 +74,7 @@ export const Payout: React.FC = () => {
         <Speed style={{ left: 1502, top: TOP - 50 }}>×13</Speed>
       </Sequence>
       <Koko
-        name="Koko: time to disagree"
+        name="Koko: dispute window"
         durationInFrames={135}
         premountFor={fps}
         mood="sleepy"
@@ -85,7 +85,7 @@ export const Payout: React.FC = () => {
         enter
         style={{ left: 560, top: 770 }}
       >
-        Everyone gets 60 seconds to disagree with the result.
+        The contract waits 60 seconds before it pays: its window for disputes.
       </Koko>
       <Koko
         name="Koko: coins land"
@@ -100,7 +100,7 @@ export const Payout: React.FC = () => {
         enter={false}
         style={{ left: 560, top: 770 }}
       >
-        Nobody did, so the coins land. No one has to claim anything.
+        Then the coins land. No one has to claim anything.
       </Koko>
       <Koko
         name="Koko: standings"

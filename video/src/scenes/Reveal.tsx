@@ -73,7 +73,7 @@ export const Reveal: React.FC = () => {
         enter={false}
         style={{ left: 70, top: 828 }}
       >
-        The host sets what really happened. The room can still object.
+        The host sets what really happened. That is the one thing a person decides.
       </Koko>
     </Backdrop>
   );
