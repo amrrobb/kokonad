@@ -36,12 +36,17 @@ Monad's 10 MON reserve, load-balanced RPC lag).
 
 ```sh
 E2E_TARGET=public E2E_VIDEO=1 pnpm e2e duel.spec.ts   # https://kokonad.robbyn.xyz and its relayer, real testnet MON
+E2E_TARGET=public E2E_VIDEO=1 pnpm e2e game.spec.ts   # the full game and the big screen, about 1 MON
 
 E2E_TARGET=public E2E_DRAFT_KEY=<DRAFT_BYPASS_TOKEN> pnpm e2e draft-live.spec.ts   # one real model call, one room
 ```
 
 Nothing is started or built; the suite plays the deployed site the way a judge would. Stop any local relayer
 that holds the same key first: two relayers sending from one account race on the nonce.
+
+The sign-in provider allows about ten page loads per network address every ten minutes. Past that it refuses
+its own requests (the browser logs them as CORS errors) and only "Just play on this device" works. The full game
+opens seven browsers from one address, so its last check (no console errors) can fail on those lines alone.
 
 ## Against real Monad testnet
 

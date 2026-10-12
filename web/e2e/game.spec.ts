@@ -8,6 +8,7 @@
 import { expect, test } from "@playwright/test";
 import { COIN, Status, balancePill, gotoAsGuest, flyingCoins, resultRows, expectFits, expectPlainLanguage, joinAs, ledger, openTab, hostCard, openQuestion, pickAndLock, prepareQuestions, pub, roomAbi, roomAddress, setResult, shot, stack, tokenAbi, type Tab } from "./helpers";
 import { parseAbi, type Address } from "viem";
+import { WEB_URL } from "./stack";
 
 test.describe.configure({ mode: "serial" });
 
@@ -37,7 +38,7 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
   await expect(host.page.getByRole("heading", { name: "Write your questions" })).toBeVisible();
   // The top of the screen says what to do next, and the picture to scan leads to this room and nowhere else.
   await expect(host.page.getByTestId("stage")).toContainText("Write tonight's questions.");
-  await expect(host.page.getByTestId("join-qr")).toHaveAttribute("data-url", new RegExp(`^http://localhost:\\d+/r/${code}$`));
+  await expect(host.page.getByTestId("join-qr")).toHaveAttribute("data-url", `${WEB_URL}/r/${code}`);
 
   // The host writes the whole game up front and seals it in one go, before anyone has joined.
   await prepareQuestions(host, [
@@ -64,7 +65,7 @@ test("host creates a sponsored room for three people", async ({ browser }, info)
   big = await openTab(browser, "big-screen", 1280, 720);
   await big.page.goto(`/host/${code}/screen`);
   await expect(big.page.getByTestId("screen-code")).toHaveText(code);
-  await expect(big.page.getByTestId("screen-qr")).toHaveAttribute("data-url", new RegExp(`^http://localhost:\\d+/r/${code}$`));
+  await expect(big.page.getByTestId("screen-qr")).toHaveAttribute("data-url", `${WEB_URL}/r/${code}`);
   await expect(big.page.getByTestId("screen-count")).toHaveText("0 in the room");
   await expect(big.page.getByRole("button")).toHaveCount(0); // nothing to press
   await expectFits(big.page, "big screen waiting");
