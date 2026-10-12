@@ -308,7 +308,8 @@ test("nothing broke quietly on any screen", async () => {
   // and the app asks again on its next poll. The browser logs each refusal. Anything else is a failure.
   const notYet = /status of 422/;
   for (const t of [host, eka, fajar, gita, big]) {
-    expect(t.errors.filter((e) => !notYet.test(e)), `${t.label} console errors`).toEqual([]);
-    expect(t.errors.length, `${t.label}: "not yet" refusals should stay a handful, not a retry storm`).toBeLessThanOrEqual(6);
+    // soft: one screen's errors must not hide the others'
+    expect.soft(t.errors.filter((e) => !notYet.test(e)), `${t.label} console errors`).toEqual([]);
+    expect.soft(t.errors.length, `${t.label}: "not yet" refusals should stay a handful, not a retry storm`).toBeLessThanOrEqual(6);
   }
 });
