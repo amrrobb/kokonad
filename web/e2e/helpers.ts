@@ -40,7 +40,29 @@ export interface Tab {
   errors: string[];
   /** Every URL this tab asked for that is not on this machine. Answered by the suite, never by the network. */
   outside: string[];
+  /** What the sign-in provider logged about being refused by this suite (see SIGN_IN_OFF). Not errors of ours. */
+  muted: string[];
 }
+
+/**
+ * Against a deployed site, the sign-in provider is kept out of the run unless E2E_SIGNIN=1. It allows
+ * about ten requests per network address every ten minutes and every page of the app loads it, so a run
+ * of seven browsers used the allowance up and left none for a person signing in from the same network.
+ * Every spec plays as a guest, which never needs it: its hosts are refused here, and the lines it logs
+ * about that go to `muted`, not `errors`. (Measured 12 Oct 2026: with these hosts refused, a guest still
+ * joins and plays; the provider logs failed requests, two "ERROR:" lines and one unhandled "Failed to fetch".)
+ */
+export const SIGN_IN_OFF = TARGET !== "local" && !process.env.E2E_SIGNIN;
+const SIGN_IN_HOSTS = /(^|\.)(dynamicauth\.com|dynamic-static-assets\.com)$/;
+const isSignInHost = (url: string) => {
+  try {
+    return SIGN_IN_HOSTS.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+};
+/** The provider's own logger, which runs from the app's bundle: "[2026-10-12T06:04:32.755Z] ERROR: …". */
+const SIGN_IN_LOG = /^\[\d{4}-\d\d-\d\dT[\d:.]+Z\] ERROR: /;
 
 /** An empty but well-formed catalogue: what the bundled sign-in SDK asks its CDN for on every page load. */
 const OUTSIDE_STUB = JSON.stringify({ groups: {}, wallets: {} });
@@ -66,12 +88,16 @@ export async function openTab(browser: Browser, label: string, width: number, he
       return route.fulfill({ status: 200, contentType: "application/json", body: OUTSIDE_STUB });
     },
   );
+  const muted: string[] = [];
+  if (SIGN_IN_OFF) await context.route((url) => isSignInHost(url.href), (route) => route.abort());
   const page = await context.newPage();
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => (SIGN_IN_OFF && String(e) === "TypeError: Failed to fetch" ? muted : errors).push(String(e)));
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
+    if (m.type() !== "error") return;
+    const text = m.text();
+    (SIGN_IN_OFF && (isSignInHost(m.location().url) || SIGN_IN_LOG.test(text)) ? muted : errors).push(text);
   });
-  return { page, label, errors, outside };
+  return { page, label, errors, outside, muted };
 }
 
 /**

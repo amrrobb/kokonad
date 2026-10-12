@@ -12,6 +12,9 @@ const bots = [];
 for (let i = 0; i < Number(nStr); i++) {
   const name = names[i % names.length];
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  // Simulated players are guests. Unless SIGNIN=1, their browsers never reach the sign-in provider: it allows
+  // only a few page loads per network address every ten minutes, and the real people in the room need those.
+  if (!process.env.SIGNIN) await ctx.route((url) => /(^|\.)(dynamicauth\.com|dynamic-static-assets\.com)$/.test(url.hostname), (route) => route.abort());
   const page = await ctx.newPage();
   page.on("pageerror", (e) => log(name, "pageerror " + e));
   try {

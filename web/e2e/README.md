@@ -44,10 +44,13 @@ E2E_TARGET=public E2E_DRAFT_KEY=<DRAFT_BYPASS_TOKEN> pnpm e2e draft-live.spec.ts
 Nothing is started or built; the suite plays the deployed site the way a judge would. Stop any local relayer
 that holds the same key first: two relayers sending from one account race on the nonce.
 
-The sign-in provider allows about ten requests per network address every ten minutes, and one page load makes
-several, so only a few page loads. Past that it refuses
-its own requests (the browser logs them as CORS errors) and only "Just play on this device" works. The full game
-opens seven browsers from one address, so its last check (no console errors) can fail on those lines alone.
+**The sign-in provider is kept out of these runs.** It allows about ten requests per network address every ten
+minutes, one page load makes several, and every page of the deployed app loads it. A run of seven browsers used
+the allowance up and left none for a person signing in from the same network. Every spec plays as a guest, which
+never needs the provider, so `helpers.ts` refuses its hosts in the test browsers and keeps the lines it logs about
+that apart from the errors the last check counts. `E2E_SIGNIN=1` lets it through, for a run that is about signing
+in. `scripts/sim-players.mjs` does the same (`SIGNIN=1` to let it through). Nothing in the app changes: the limit
+is the provider's own and applies to every real visitor.
 
 ## Against real Monad testnet
 
