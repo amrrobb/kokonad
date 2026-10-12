@@ -32,7 +32,7 @@ export const Intro: React.FC = () => {
       </div>
       <Koko
         name="Koko: hello"
-        durationInFrames={Math.round(2.6 * fps)}
+        durationInFrames={Math.round(3.2 * fps)}
         premountFor={fps}
         mood="happy"
         layout="row"
@@ -42,12 +42,12 @@ export const Intro: React.FC = () => {
         enter
         style={{ left: 210, top: 330 }}
       >
-        Hi, I'm Koko! Let me show you a real game.
+        Hi, I'm Koko! Let me walk you through a game.
       </Koko>
       <Koko
         name="Koko: what it is"
-        from={Math.round(2.6 * fps)}
-        durationInFrames={Math.round(4.4 * fps)}
+        from={Math.round(3.2 * fps)}
+        durationInFrames={Math.round(5.4 * fps)}
         premountFor={fps}
         mood="surprised"
         layout="row"
@@ -69,7 +69,7 @@ export const Intro: React.FC = () => {
           fontWeight: 800,
           fontSize: 34,
           color: C.ink2,
-          opacity: interpolate(frame, [3 * fps, 3.5 * fps], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+          opacity: interpolate(frame, [3.6 * fps, 4.1 * fps], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
         }}
       >
         Everything you are about to see was recorded on kokonad.robbyn.xyz, on Monad testnet.

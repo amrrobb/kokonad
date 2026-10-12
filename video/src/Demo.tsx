@@ -14,13 +14,13 @@ import { Reveal } from "./scenes/Reveal";
 
 /**
  * The demo, scene by scene. Each scene is also registered on its own in Root.tsx, so it can be opened and
- * edited alone in Studio. Eight 12-frame fades overlap the scenes: 2790 - 96 = 2694 frames (89.8 s).
+ * edited alone in Studio. Eight 12-frame fades overlap the scenes: 2922 - 96 = 2826 frames (94.2 s).
  */
 export const Demo: React.FC = () => {
   const { fps } = useVideoConfig();
   return (
     <TransitionSeries name="Demo">
-      <TransitionSeries.Sequence name="Intro" durationInFrames={210} premountFor={fps}>
+      <TransitionSeries.Sequence name="Intro" durationInFrames={258} premountFor={fps}>
         <Intro />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 12 })} />
@@ -44,11 +44,11 @@ export const Demo: React.FC = () => {
         <Result />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 12 })} />
-      <TransitionSeries.Sequence name="6 Dispute window, payout" durationInFrames={330} premountFor={fps}>
+      <TransitionSeries.Sequence name="6 Dispute window, payout" durationInFrames={372} premountFor={fps}>
         <Payout />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 12 })} />
-      <TransitionSeries.Sequence name="7 On Monad" durationInFrames={390} premountFor={fps}>
+      <TransitionSeries.Sequence name="7 On Monad" durationInFrames={432} premountFor={fps}>
         <Monad />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 12 })} />

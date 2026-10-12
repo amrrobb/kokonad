@@ -11,7 +11,7 @@ npx remotion render KokonadDemo out/kokonad-demo.mp4
 
 ## What is in it
 
-`KokonadDemo` (1920x1080, 30 fps, 89.8 s) is nine scenes joined by short fades in `src/Demo.tsx`. Each scene is its
+`KokonadDemo` (1920x1080, 30 fps, 94.2 s) is nine scenes joined by short fades in `src/Demo.tsx`. Each scene is its
 own file in `src/scenes/` and is also registered on its own (folder "Scenes" in Studio), so it can be opened
 and edited alone.
 
@@ -42,7 +42,7 @@ The recordings are not in git (about 70 MB). Put the five `.webm` files in `foot
 
 The five tabs started at different moments. `SYNC` in `src/theme.ts` is the second in each clip at which
 question 1's countdown showed 12; clips are trimmed with `at(clip, T)` so that side-by-side screens show the
-same instant. Speeds other than 1x carry a tag on screen (`×2`, `×16`).
+same instant. Speeds other than 1x carry a tag on screen (`×2`, `×13`).
 
 ## Rendering on this machine
 

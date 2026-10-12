@@ -67,7 +67,7 @@ export const Source: React.FC = () => (
       color: C.ink3,
     }}
   >
-    Real game · kokonad.robbyn.xyz · room RN2U3C · Monad testnet
+    Recorded on kokonad.robbyn.xyz · room RN2U3C · Monad testnet
   </div>
 );
 

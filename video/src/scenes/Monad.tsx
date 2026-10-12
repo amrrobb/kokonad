@@ -65,12 +65,12 @@ export const Monad: React.FC = () => {
             3 KOKO, room → Eka
           </Ring>
         </Sequence>
-        <Sequence name="Ring: block" from={Math.round(4.6 * fps)} durationInFrames={Math.round(4.2 * fps)} layout="none">
+        <Sequence name="Ring: block" from={Math.round(4.6 * fps)} durationInFrames={Math.round(4.6 * fps)} layout="none">
           <Ring x={282} y={331} w={244} h={26}>
             a block on Monad testnet
           </Ring>
         </Sequence>
-        <Sequence name="Ring: relayer" from={Math.round(8.8 * fps)} layout="none">
+        <Sequence name="Ring: relayer" from={Math.round(9.2 * fps)} layout="none">
           <Ring x={282} y={564} w={432} h={32}>
             sent by the relayer
           </Ring>
@@ -93,7 +93,7 @@ export const Monad: React.FC = () => {
       <Koko
         name="Koko: 23 transactions"
         from={Math.round(4.6 * fps)}
-        durationInFrames={Math.round(4.2 * fps)}
+        durationInFrames={Math.round(4.6 * fps)}
         premountFor={fps}
         mood="happy"
         layout="stack"
@@ -107,8 +107,8 @@ export const Monad: React.FC = () => {
       </Koko>
       <Koko
         name="Koko: nobody pays gas"
-        from={Math.round(8.8 * fps)}
-        durationInFrames={Math.round(4.2 * fps)}
+        from={Math.round(9.2 * fps)}
+        durationInFrames={Math.round(5.2 * fps)}
         premountFor={fps}
         mood="happy"
         layout="stack"

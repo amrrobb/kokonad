@@ -62,7 +62,7 @@ export const Question: React.FC = () => {
       </Sequence>
       <Koko
         name="Koko: one coin each"
-        durationInFrames={Math.round(4.4 * fps)}
+        durationInFrames={Math.round(4.6 * fps)}
         premountFor={fps}
         mood="surprised"
         layout="row"
@@ -76,7 +76,7 @@ export const Question: React.FC = () => {
       </Koko>
       <Koko
         name="Koko: sealed answer"
-        from={Math.round(4.4 * fps)}
+        from={Math.round(4.6 * fps)}
         durationInFrames={Math.round(4.8 * fps)}
         premountFor={fps}
         mood="happy"
@@ -91,8 +91,8 @@ export const Question: React.FC = () => {
       </Koko>
       <Koko
         name="Koko: clock runs out"
-        from={Math.round(9.2 * fps)}
-        durationInFrames={Math.round(4.8 * fps)}
+        from={Math.round(9.4 * fps)}
+        durationInFrames={Math.round(4.6 * fps)}
         premountFor={fps}
         mood="surprised"
         layout="row"
