@@ -48,5 +48,5 @@ next-env.d.ts
 
 # end-to-end suite: its own build, reports and screenshots
 /.next-e2e/
-/test-results/
+/test-results*/
 /playwright-report/
