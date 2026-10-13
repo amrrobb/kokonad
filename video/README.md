@@ -11,7 +11,7 @@ npx remotion render KokonadDemo out/kokonad-demo.mp4
 
 ## What is in it
 
-`KokonadDemo` (1920x1080, 30 fps, about 115 s, with Koko's voice and a music bed) is eleven scenes joined by short fades in `src/Demo.tsx`. Each scene is its
+`KokonadDemo` (1920x1080, 30 fps, about 112 s, with Koko's voice and a music bed) is eleven scenes joined by short fades in `src/Demo.tsx`. Each scene is its
 own file in `src/scenes/` and is also registered on its own (folder "Scenes" in Studio), so it can be opened
 and edited alone.
 

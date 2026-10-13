@@ -80,7 +80,7 @@ The contract isn't a judge, but it makes every trace visible: sealed questions, 
 
 1. **Small-transaction economics.** The recorded game below was 23 transactions for 3 players and 2 questions, and cost 0.97 MON in all. By the same count, 10 people × 10 questions is about 300 transactions (seal, answer, reveal, pay-out) moving 1–20 coins each. At $0.05 per transaction that would be $15 in fees, more than the prizes. This product only makes sense on a chain where fees round to zero.
 2. **Speed is part of the game.** A room looks at one clock: the laptop, every phone and the big screen each poll the chain every two seconds and draw what they show from a single block. A 30-second question with 15-second confirmations isn't playable. The "first N correct" rule (in the contract, not in the app yet) also only makes sense when ordering is fast and unambiguous.
-3. **Our first users are Monad's own community.** The builder is a member of DevWeb3Jogja, an official Metropolis community supporter. The first sessions with people are meant for its events; none has run yet.
+3. **Our first users are Monad's own community.** The builder is a member of DevWeb3Jogja, an official Metropolis community supporter. Its members are the first people Kokonad is for; no session with people has run yet.
 
 **Numbers from one full game on the public site** (room `RN2U3C`, 12 Oct 2026; read from the relayer's ledger and the chain). The players were browsers driven by the end-to-end suite, not people: a session with people is still to come.
 

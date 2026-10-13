@@ -9,11 +9,8 @@
   "host-fund": {
     "text": "A host starts a room and funds it with coins. Everyone else plays for free."
   },
-  "host-draft": {
-    "text": "Short on time? AI drafts the questions from one line."
-  },
   "host-seal": {
-    "text": "Then they are sealed on Monad, before anyone joins."
+    "text": "The host writes the questions, and they are sealed on Monad before anyone joins."
   },
   "join-scan": {
     "text": "Players scan the code on the big screen. Nothing to install."
