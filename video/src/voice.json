@@ -86,5 +86,57 @@
   "outro-try": {
     "seconds": 3.16,
     "key": "518a2f17d313f004"
+  },
+  "pitch-hello": {
+    "seconds": 3.424,
+    "key": "d462a104cd6a9823"
+  },
+  "pitch-team": {
+    "seconds": 7.303,
+    "key": "5c09fe041e9fbe00"
+  },
+  "pitch-problem-1": {
+    "seconds": 5.134,
+    "key": "b39d654e384a8316"
+  },
+  "pitch-problem-2": {
+    "seconds": 5.536,
+    "key": "d47f5eb775411ef8"
+  },
+  "pitch-problem-3": {
+    "seconds": 2.629,
+    "key": "4b4fa489f4a3a45d"
+  },
+  "pitch-solution-1": {
+    "seconds": 5.379,
+    "key": "c92e6b4775a0d088"
+  },
+  "pitch-solution-2": {
+    "seconds": 5.086,
+    "key": "16de17ebc42977b5"
+  },
+  "pitch-monad-1": {
+    "seconds": 8.248,
+    "key": "200a027a013fd25a"
+  },
+  "pitch-monad-2": {
+    "seconds": 3.925,
+    "key": "2b0e23a4196b3810"
+  },
+  "pitch-users-1": {
+    "seconds": 5.54,
+    "key": "b29be12d8c022caf"
+  },
+  "pitch-users-2": {
+    "seconds": 6.26,
+    "key": "beb87990cc428cea"
+  },
+  "pitch-status": {
+    "seconds": 7.669,
+    "key": "cce989fde31b60dc"
+  },
+  "pitch-outro": {
+    "seconds": 1.28,
+    "key": "41f663061a17e09a"
   }
 }

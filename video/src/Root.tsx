@@ -1,5 +1,6 @@
 import { Composition, Folder } from "remotion";
 import { Demo, DEMO_FRAMES } from "./Demo";
+import { Pitch, PITCH_FRAMES } from "./pitch/Pitch";
 import { ColdOpen, COLD_OPEN_FRAMES } from "./scenes/ColdOpen";
 import { HostSetup, HOST_SETUP_FRAMES } from "./scenes/HostSetup";
 import { Intro, INTRO_FRAMES } from "./scenes/Intro";
@@ -14,11 +15,14 @@ import { Split, SPLIT_FRAMES } from "./scenes/Split";
 
 /** The hackathon caps the demo video at three minutes. */
 if (DEMO_FRAMES > 180 * 30) throw new Error("The demo is longer than three minutes.");
+/** And the pitch video at two. */
+if (PITCH_FRAMES > 120 * 30) throw new Error("The pitch is longer than two minutes.");
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition id="KokonadDemo" component={Demo} durationInFrames={DEMO_FRAMES} fps={30} width={1920} height={1080} />
+      <Composition id="KokonadPitch" component={Pitch} durationInFrames={PITCH_FRAMES} fps={30} width={1920} height={1080} />
       <Folder name="Scenes">
         <Composition id="ColdOpen" component={ColdOpen} durationInFrames={COLD_OPEN_FRAMES} fps={30} width={1920} height={1080} />
         <Composition id="Intro" component={Intro} durationInFrames={INTRO_FRAMES} fps={30} width={1920} height={1080} />

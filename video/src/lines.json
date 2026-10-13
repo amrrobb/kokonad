@@ -67,5 +67,49 @@
   },
   "outro-try": {
     "text": "Open a room and try it. See you at your next meetup!"
+  },
+  "pitch-hello": {
+    "text": "Hi, I'm Koko. Here is who built Kokonad, and why.",
+    "say": "Hi, I'm Koko. Here is who built Koko-nad, and why."
+  },
+  "pitch-team": {
+    "text": "One person built it: a solo builder from DevWeb3Jogja, a web3 community in Yogyakarta, Indonesia.",
+    "say": "One person built it: a solo builder from Dev Web Three Jogja, a web three community in Yogyakarta, Indonesia."
+  },
+  "pitch-problem-1": {
+    "text": "Every community event runs a quick game to wake the room up. The prize is the awkward part."
+  },
+  "pitch-problem-2": {
+    "text": "Someone checks the answers by hand. Someone holds the money. And someone forgets to pay."
+  },
+  "pitch-problem-3": {
+    "text": "And a quiz only asks what somebody already knows."
+  },
+  "pitch-solution-1": {
+    "text": "So Kokonad lets the room guess what happens next, and puts the pot in a contract on Monad.",
+    "say": "So Koko-nad lets the room guess what happens next, and puts the pot in a contract on Monad."
+  },
+  "pitch-solution-2": {
+    "text": "Answers stay sealed until time is up. Then the contract pays everyone who was right."
+  },
+  "pitch-monad-1": {
+    "text": "Why Monad? A game is dozens of tiny transactions. Our recorded game was 23 of them, for less than one MON in total.",
+    "say": "Why Monad? A game is dozens of tiny transactions. Our recorded game was 23 of them, for less than one mon in total."
+  },
+  "pitch-monad-2": {
+    "text": "Anywhere slower or pricier, the fees would be bigger than the prizes."
+  },
+  "pitch-users-1": {
+    "text": "The first users are people who run small community events, starting with the builder's own community."
+  },
+  "pitch-users-2": {
+    "text": "A session needs only a link and a shared screen. And every player who scans the code sees how to host the next one."
+  },
+  "pitch-status": {
+    "text": "Kokonad is live on Monad testnet today. So far the players were test browsers. The first rooms with real people come next.",
+    "say": "Koko-nad is live on Monad testnet today. So far the players were test browsers. The first rooms with real people come next."
+  },
+  "pitch-outro": {
+    "text": "Open a room and try it!"
   }
 }

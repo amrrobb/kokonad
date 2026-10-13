@@ -1,12 +1,13 @@
-# Kokonad demo video
+# Kokonad videos
 
-The demo video for the submission, built with [Remotion](https://www.remotion.dev): real recordings of one game
+The demo video and the pitch video for the submission. The demo is built with [Remotion](https://www.remotion.dev): real recordings of one game
 on the public site, with Koko (the mascot) walking through it scene by scene.
 
 ```sh
 npm install
 npm run dev                     # Remotion Studio: preview, edit layout and timings, render
 npx remotion render KokonadDemo out/kokonad-demo.mp4
+npx remotion render KokonadPitch out/kokonad-pitch.mp4
 ```
 
 ## What is in it
@@ -31,6 +32,12 @@ and edited alone.
 
 The pose is the `mood` prop (`happy`, `surprised`, `oops`, `sleepy`), one of the four drawn poses in
 `public/mascot/`.
+
+## The pitch video
+
+`KokonadPitch` (`src/pitch/Pitch.tsx`, about 78 s, capped at two minutes in `Root.tsx`) is five parts timed by their lines, like the
+demo: who built it, the problem, what Kokonad does (two clips of the recorded game), why Monad (figures from that game, labelled
+as played by test browsers), and who it is for and where it stands. Its lines are the `pitch-` entries in `src/lines.json`.
 
 ## Koko's lines and voice
 
