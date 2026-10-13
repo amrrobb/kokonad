@@ -146,6 +146,8 @@ export const Phone: React.FC<{
       <Label>{label}</Label>
       <div
         style={{
+          // Remotion sizes boxes with their border; the recording must keep its full width inside the bezel.
+          boxSizing: "content-box",
           width,
           height,
           position: "relative",
@@ -180,6 +182,7 @@ export const Screen: React.FC<{
       <Label>{label}</Label>
       <div
         style={{
+          boxSizing: "content-box",
           width,
           borderRadius: kind === "browser" ? 20 : 14,
           overflow: "hidden",
