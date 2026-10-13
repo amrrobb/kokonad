@@ -75,7 +75,7 @@ export const Intro: React.FC = () => {
           opacity: interpolate(frame, [say[1].from + 12, say[1].from + 27], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
         }}
       >
-        Everything you are about to see was recorded on kokonad.robbyn.xyz, on Monad testnet.
+        Every app screen in this video was recorded on kokonad.robbyn.xyz, on Monad testnet.
       </div>
     </Backdrop>
   );

@@ -1,5 +1,5 @@
 import type React from "react";
-import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { C, fontFamily } from "./theme";
 
 /** The app's warm page: cream with two peach corners. */
@@ -62,12 +62,27 @@ export const Source: React.FC = () => (
       position: "absolute",
       right: 60,
       top: 34,
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
       fontWeight: 800,
       fontSize: 24,
       color: C.ink3,
     }}
   >
-    Recorded on kokonad.robbyn.xyz · room RN2U3C · Monad testnet
+    <span>Recorded on kokonad.robbyn.xyz · room RN2U3C ·</span>
+    <Img src={staticFile("brand/monad-mark.svg")} style={{ width: 24, height: 24 }} />
+    <span>Monad testnet</span>
+  </div>
+);
+
+/** "Built on" beside Monad's own logo, which is used as published: not redrawn, not recoloured. */
+export const BuiltOnMonad: React.FC<{ readonly height: number; readonly style?: React.CSSProperties }> = ({ height, style }) => (
+  <div
+    style={{ display: "inline-flex", alignItems: "center", gap: height * 0.45, fontWeight: 800, fontSize: height * 0.95, color: C.ink2, ...style }}
+  >
+    <span>Built on</span>
+    <Img src={staticFile("brand/monad-logo.svg")} style={{ height, width: (height * 126) / 24 }} />
   </div>
 );
 

@@ -11,7 +11,7 @@ npx remotion render KokonadDemo out/kokonad-demo.mp4
 
 ## What is in it
 
-`KokonadDemo` (1920x1080, 30 fps, about 106 s, with Koko's voice and a music bed) is ten scenes joined by short fades in `src/Demo.tsx`. Each scene is its
+`KokonadDemo` (1920x1080, 30 fps, about 115 s, with Koko's voice and a music bed) is eleven scenes joined by short fades in `src/Demo.tsx`. Each scene is its
 own file in `src/scenes/` and is also registered on its own (folder "Scenes" in Studio), so it can be opened
 and edited alone.
 
@@ -24,6 +24,7 @@ and edited alone.
 | 3 Question | phone and big screen while question 1 is live |
 | 4 Reveal | host sets the result; two phones |
 | 5 Result | three phones: right, wrong, sat out |
+| 5b Split | drawn, not recorded, and labelled so on screen: six players, three right, two coins each, as `Room._settle` divides it. The recorded game had one winner, so no pot is shared in the footage |
 | 6 Payout | the contract's 60 s dispute window sped up, coins landing, standings |
 | 7 Monad | the payout transaction on the block explorer |
 | Outro | where to try it |
@@ -76,3 +77,8 @@ same instant. Speeds other than 1x carry a tag on screen (`×2`, `×11`).
 
 `remotion.config.ts` picks Chrome for Testing and one render tab at a time. With the default headless shell every
 render stopped at "Waiting for root component to load", and with several tabs some frames came out garbled.
+
+## Monad's logo
+
+`public/brand/monad-logo.svg` and `monad-mark.svg` are Monad's own logo, taken from monad.xyz/brand-and-media-kit on 13 Oct 2026 and used as
+published (the wordmark's page-dependent colour is fixed to the kit's dark navy). They are Monad's trademark, not part of this repo's licence.

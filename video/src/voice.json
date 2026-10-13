@@ -55,6 +55,14 @@
     "seconds": 3.207,
     "key": "b10ce0c1d9a55e5a"
   },
+  "split-in": {
+    "seconds": 3.486,
+    "key": "a1a449570176380c"
+  },
+  "split-out": {
+    "seconds": 4.22,
+    "key": "832210e7328ba6f2"
+  },
   "payout-wait": {
     "seconds": 4.782,
     "key": "1ed4893b21b618e2"

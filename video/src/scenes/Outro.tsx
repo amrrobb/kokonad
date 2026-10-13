@@ -1,7 +1,7 @@
 import type React from "react";
 import { Easing, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Koko } from "../Koko";
-import { Backdrop } from "../Stage";
+import { Backdrop, BuiltOnMonad } from "../Stage";
 import { C } from "../theme";
 import { cues, spoken } from "../voice";
 
@@ -18,7 +18,7 @@ export const Outro: React.FC = () => {
         style={{
           position: "absolute",
           left: 120,
-          top: 250,
+          top: 190,
           width: 900,
           opacity: interpolate(frame, [0, 12], [0, 1], {
             extrapolateLeft: "clamp",
@@ -61,9 +61,12 @@ export const Outro: React.FC = () => {
         >
           kokonad.robbyn.xyz
         </div>
+        <div style={{ marginTop: 46 }}>
+          <BuiltOnMonad height={50} />
+        </div>
         <p
           style={{
-            margin: "40px 0 0",
+            margin: "34px 0 0",
             fontWeight: 800,
             fontSize: 34,
             color: C.ink3,

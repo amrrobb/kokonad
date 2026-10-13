@@ -10,6 +10,7 @@ import { Payout, PAYOUT_FRAMES } from "./scenes/Payout";
 import { Question, QUESTION_FRAMES } from "./scenes/Question";
 import { Result, RESULT_FRAMES } from "./scenes/Result";
 import { Reveal, REVEAL_FRAMES } from "./scenes/Reveal";
+import { Split, SPLIT_FRAMES } from "./scenes/Split";
 
 /** The hackathon caps the demo video at three minutes. */
 if (DEMO_FRAMES > 180 * 30) throw new Error("The demo is longer than three minutes.");
@@ -26,6 +27,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition id="Question" component={Question} durationInFrames={QUESTION_FRAMES} fps={30} width={1920} height={1080} />
         <Composition id="Reveal" component={Reveal} durationInFrames={REVEAL_FRAMES} fps={30} width={1920} height={1080} />
         <Composition id="Result" component={Result} durationInFrames={RESULT_FRAMES} fps={30} width={1920} height={1080} />
+        <Composition id="Split" component={Split} durationInFrames={SPLIT_FRAMES} fps={30} width={1920} height={1080} />
         <Composition id="Payout" component={Payout} durationInFrames={PAYOUT_FRAMES} fps={30} width={1920} height={1080} />
         <Composition id="Monad" component={Monad} durationInFrames={MONAD_FRAMES} fps={30} width={1920} height={1080} />
         <Composition id="Outro" component={Outro} durationInFrames={OUTRO_FRAMES} fps={30} width={1920} height={1080} />

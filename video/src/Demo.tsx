@@ -13,6 +13,7 @@ import { Payout, PAYOUT_FRAMES } from "./scenes/Payout";
 import { Question, QUESTION_FRAMES } from "./scenes/Question";
 import { Result, RESULT_FRAMES } from "./scenes/Result";
 import { Reveal, REVEAL_FRAMES } from "./scenes/Reveal";
+import { Split, SPLIT_FRAMES } from "./scenes/Split";
 import { LEAD, voiceFrames } from "./voice";
 
 const FADE = 12;
@@ -24,6 +25,7 @@ const SCENES = [
   QUESTION_FRAMES,
   REVEAL_FRAMES,
   RESULT_FRAMES,
+  SPLIT_FRAMES,
   PAYOUT_FRAMES,
   MONAD_FRAMES,
   OUTRO_FRAMES,
@@ -84,6 +86,10 @@ export const Demo: React.FC = () => {
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: FADE })} />
         <TransitionSeries.Sequence name="5 Pot is split" durationInFrames={RESULT_FRAMES} premountFor={fps}>
           <Result />
+        </TransitionSeries.Sequence>
+        <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: FADE })} />
+        <TransitionSeries.Sequence name="5b A split, drawn" durationInFrames={SPLIT_FRAMES} premountFor={fps}>
+          <Split />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: FADE })} />
         <TransitionSeries.Sequence name="6 Dispute window, payout" durationInFrames={PAYOUT_FRAMES} premountFor={fps}>

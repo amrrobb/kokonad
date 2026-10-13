@@ -43,6 +43,12 @@
   "result-lost": {
     "text": "Wrong, or sat it out? Your coin stays in the pot."
   },
+  "split-in": {
+    "text": "Say six people play. Six coins go into the pot."
+  },
+  "split-out": {
+    "text": "Three were right, so each takes two. Wrong, or sat out: nothing."
+  },
   "payout-wait": {
     "text": "The contract waits 60 seconds before it pays: its window for disputes."
   },

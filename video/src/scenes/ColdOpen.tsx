@@ -1,6 +1,6 @@
 import { Video } from "@remotion/media";
 import type React from "react";
-import { Easing, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { Easing, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Backdrop, Phone, Source } from "../Stage";
 import { at, C } from "../theme";
 
@@ -65,6 +65,9 @@ export const ColdOpen: React.FC = () => {
         <div
           style={{
             marginTop: 34,
+            display: "flex",
+            alignItems: "center",
+            gap: 18,
             fontWeight: 800,
             fontSize: 46,
             lineHeight: 1.25,
@@ -77,7 +80,8 @@ export const ColdOpen: React.FC = () => {
             }),
           }}
         >
-          By a contract, on Monad.
+          <span>By a contract, on</span>
+          <Img src={staticFile("brand/monad-logo.svg")} style={{ height: 40, width: 210 }} />
         </div>
       </div>
     </Backdrop>
