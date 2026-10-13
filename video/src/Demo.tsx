@@ -3,6 +3,7 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import type React from "react";
 import { interpolate, staticFile, useVideoConfig } from "remotion";
+import { ColdOpen, COLD_OPEN_FRAMES } from "./scenes/ColdOpen";
 import { HostSetup, HOST_SETUP_FRAMES } from "./scenes/HostSetup";
 import { Intro, INTRO_FRAMES } from "./scenes/Intro";
 import { Join, JOIN_FRAMES } from "./scenes/Join";
@@ -16,6 +17,7 @@ import { LEAD, voiceFrames } from "./voice";
 
 const FADE = 12;
 const SCENES = [
+  COLD_OPEN_FRAMES,
   INTRO_FRAMES,
   HOST_SETUP_FRAMES,
   JOIN_FRAMES,
@@ -29,10 +31,14 @@ const SCENES = [
 /** Every scene is as long as its lines take to say; the fades between them overlap. */
 export const DEMO_FRAMES = SCENES.reduce((sum, frames) => sum + frames, 0) - FADE * (SCENES.length - 1);
 
-/** The music sits well under Koko's voice, comes up once the last line is said, and fades with the picture. */
+/**
+ * The music is up for the cold open, which has no voice, drops well under Koko as the first line starts,
+ * comes up again once the last line is said, and fades with the picture.
+ */
+const FIRST_WORD = COLD_OPEN_FRAMES - FADE + LEAD;
 const LAST_WORD = DEMO_FRAMES - OUTRO_FRAMES + LEAD + voiceFrames("outro-try");
 const music = (frame: number): number =>
-  interpolate(frame, [0, 12, LAST_WORD, LAST_WORD + 20, DEMO_FRAMES - 26, DEMO_FRAMES - 1], [0, 0.17, 0.17, 0.45, 0.45, 0], {
+  interpolate(frame, [0, 8, FIRST_WORD - 14, FIRST_WORD, LAST_WORD, LAST_WORD + 20, DEMO_FRAMES - 26, DEMO_FRAMES - 1], [0, 0.8, 0.8, 0.17, 0.17, 0.45, 0.45, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -47,6 +53,10 @@ export const Demo: React.FC = () => {
     <>
       <Audio name="Music" src={staticFile("music/bgm.mp3")} volume={music} />
       <TransitionSeries name="Demo">
+        <TransitionSeries.Sequence name="Cold open: the payout" durationInFrames={COLD_OPEN_FRAMES} premountFor={fps}>
+          <ColdOpen />
+        </TransitionSeries.Sequence>
+        <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: FADE })} />
         <TransitionSeries.Sequence name="Intro" durationInFrames={INTRO_FRAMES} premountFor={fps}>
           <Intro />
         </TransitionSeries.Sequence>

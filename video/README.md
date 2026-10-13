@@ -11,12 +11,13 @@ npx remotion render KokonadDemo out/kokonad-demo.mp4
 
 ## What is in it
 
-`KokonadDemo` (1920x1080, 30 fps, about 103 s, with Koko's voice and a music bed) is nine scenes joined by short fades in `src/Demo.tsx`. Each scene is its
+`KokonadDemo` (1920x1080, 30 fps, about 106 s, with Koko's voice and a music bed) is ten scenes joined by short fades in `src/Demo.tsx`. Each scene is its
 own file in `src/scenes/` and is also registered on its own (folder "Scenes" in Studio), so it can be opened
 and edited alone.
 
 | Scene | Shows |
 |---|---|
+| ColdOpen | Three seconds with no voice: the pot arrives on the winner's phone, at real speed |
 | Intro | Koko says what Kokonad is |
 | 1 HostSetup | host's laptop: create a room, seal the questions |
 | 2 Join | a phone joining, the big screen filling up |
