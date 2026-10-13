@@ -38,10 +38,15 @@ export const DEMO_FRAMES = SCENES.reduce((sum, frames) => sum + frames, 0) - FAD
 const FIRST_WORD = COLD_OPEN_FRAMES - FADE + LEAD;
 const LAST_WORD = DEMO_FRAMES - OUTRO_FRAMES + LEAD + voiceFrames("outro-try");
 const music = (frame: number): number =>
-  interpolate(frame, [0, 8, FIRST_WORD - 14, FIRST_WORD, LAST_WORD, LAST_WORD + 20, DEMO_FRAMES - 26, DEMO_FRAMES - 1], [0, 0.8, 0.8, 0.17, 0.17, 0.45, 0.45, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  interpolate(
+    frame,
+    [0, 8, FIRST_WORD - 14, FIRST_WORD, LAST_WORD, LAST_WORD + 20, DEMO_FRAMES - 26, DEMO_FRAMES - 1],
+    [0, 0.8, 0.8, 0.17, 0.17, 0.45, 0.45, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  );
 
 /**
  * The demo, scene by scene. Each scene is also registered on its own in Root.tsx, so it can be opened and
