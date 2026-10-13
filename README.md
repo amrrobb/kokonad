@@ -2,31 +2,47 @@
 
 **Live guessing games for community events, where the prize pot settles itself.**
 
-Kokonad is a web app for event hosts (meetups, tournaments, watch parties, classes) who want to turn any moment into a live guessing game in 10 seconds. The host writes questions on a laptop, participants answer from their phones via a link and room code, and the moment the host calls the result, the smart contract on Monad splits the pot to whoever earned it. Nobody checks answers by hand, nobody holds anyone else's money, nobody forgets to pay.
+Kokonad is a web app for event hosts (meetups, tournaments, watch parties, classes) who want to turn any moment into a live guessing game in 10 seconds. The host writes questions on a laptop, participants answer from their phones via a link and room code, and once the host calls the result and a 60-second dispute window has passed, the smart contract on Monad splits the pot between everyone who was right. Nobody checks answers by hand, nobody holds anyone else's money, nobody forgets to pay.
 
 If Kahoot is a quiz where the answer is already known, Kokonad is a guess about something that hasn't happened yet, with a pot that actually moves.
 
 > Built for the **Monad Metropolis Hackathon**, Track 03 Social, Attention & Culture. Runs on Monad testnet (chain ID 10143) with a mock token; no real token exists.
 
+| | |
+|---|---|
+| Live product | https://kokonad.robbyn.xyz (how to try it: ["Trying it as a judge"](#trying-it-as-a-judge)) |
+| Demo video | _link to be added_ (its source is [`video/`](video/)) |
+| Pitch video | _link to be added_ |
+| Contracts | [addresses on Monad testnet](#contract-addresses-monad-testnet-10143) |
+
+**The problem.** Community events run quick games to keep a room awake, and the prize is the awkward part: someone checks the answers by hand, someone holds the money, and someone forgets to pay. Quiz tools also only ask what somebody already knows.
+
+**What Kokonad does about it.** The questions are about what is about to happen in the room. Everyone's coin goes into a pot held by a contract, answers stay sealed until time is up, and the contract pays everyone who was right. The host says what happened; the host never touches the pot.
+
+What is live, what exists only in the contracts and what is not built is listed under ["Status at submission"](#status-at-submission-13-oct-2026). The sections before it say which is which.
+
 ---
 
 ## What it does
 
+Everything in this section runs today on the public site.
+
 **Host**
 - Creates a room with a 6-character code; only people with the code can join.
-- Pastes an event schedule or topic and gets suggested questions from an LLM, editable before use.
-- Configures each question: answer template (multiple choice, nearest number, exact guess), payout rule (everyone correct splits evenly, or first N correct), timer, and pot.
-- Picks a funding mode: **sponsored** (the host's prize budget becomes every participant's starting deposit; participants never pay) or **pooled** (everyone puts in the same amount).
-- Every question charges one **play** from everyone in the room into that question's pot; answering uses the play, sitting out forfeits it. The host may add a **seed**. Whoever is right splits the pot the moment the host calls it. So the budget flows from wrong (and absent) answers to right ones instead of being handed out evenly.
-- Seals all questions before the event (hashes on-chain), opens them one at a time, sets the result with one click.
-- Can play along, with safeguards (see "What if the host cheats?").
+- Funds the room: the host's budget becomes every participant's starting coins, so participants never pay (a **sponsored** room).
+- Types the questions, or says in one line what the event is about and gets a first draft from an LLM, editable before use.
+- Seals all the questions before the first one opens (hashes on-chain), opens them one at a time with a timer, and sets the result with one click.
+- Puts the big screen (`/host/<CODE>/screen`) on a projector: the code and a QR to scan, the live question and clock, the result, the standings.
 
 **Participant**
-- Opens a link or types a code, signs in with Google or a passkey. A wallet is created behind the scenes; the words "wallet", "gas", and "transaction" never appear on screen.
-- Gets a starting deposit on joining ("Grab 20 coins" in sponsored rooms, "Put in 20 coins" in pooled ones; mock ERC-20 `KOKO` on testnet).
-- Answers with one tap. Answers stay sealed until time is up, then open automatically for everyone.
-- Wins: coins land in the balance that second. Loses or sits out: the play stays in the pot. Disagrees with the result: a 60-second dispute button.
-- Leaderboard between questions, podium and titles at the end.
+- Scans the QR or types the code and picks a name. "Just play on this device" needs no sign-in; email or Google sign-in through Dynamic is wired next to it. The words "wallet", "gas" and "transaction" never appear on screen.
+- Gets the starting coins on joining (mock ERC-20 `KOKO` on testnet).
+- Every question takes one **play** (one coin) from everyone in the room into that question's pot. Answering is one tap; sitting out forfeits the play.
+- Answers stay sealed until time is up, then every phone opens its own answer.
+- Was right: an equal share of the pot lands in the balance once the 60-second dispute window has passed, with nothing to claim. Was wrong or sat out: the play stays in the pot. So the budget flows from wrong and absent answers to right ones instead of being handed out evenly.
+
+**Designed, in the contracts, not in the app yet:** pooled rooms (everyone puts in the same amount), a host **seed** on a question, nearest-number and exact-guess questions, the "first N correct" rule, a host who plays along, and the participant's call to dispute a result (the contract counts disputes and refunds the pot at one third; the app has no button for it).
+**Designed, not built:** host reputation, the end-of-session podium and titles, passkey-derived salts.
 
 ---
 
@@ -37,15 +53,15 @@ Host opens the question      →  30-second timer
 Everyone in the room is charged one play into the pot
 Participants answer          →  play burned, hash(answer, salt) stored
 Time is up                   →  participant apps reveal automatically; all answers become visible
-Host sets the result         →  contract mints a Correct token to each winner and splits the pot
-60-second dispute window     →  if ≥ 1/3 of answerers disagree, the pot is refunded
-Settle                       →  coins land in winners' balances
+Host sets the result         →  contract mints a Correct token to each winner
+60-second dispute window     →  if ≥ 1/3 of answerers disagree, the pot is refunded (contract; no button in the app yet)
+Settle                       →  the pot is split evenly between the winners; coins land in their balances
 ```
 
 What the contract guarantees:
 - Questions are sealed before they open; the host can't change a question after seeing answers.
 - Nobody can see anyone else's answer before time is up, including the host and our server.
-- "Fastest" is decided by transaction order in Monad blocks, not by our server.
+- Under the "first N correct" rule (in the contract, not offered in the app yet), "fastest" is decided by transaction order in Monad blocks, not by our server.
 - The pot is split by the contract, not by the organizers.
 
 What we **don't** claim: millisecond precision (ordering is fair-by-block), and total cheat-proofing (see below).
@@ -56,15 +72,15 @@ What we **don't** claim: millisecond precision (ordering is fair-by-block), and 
 
 Kokonad is built for a room: 5 to 50 people watching the same thing happen. At that scale the best oracle is the people in the room, and the most effective sanction is social: nobody joins that host's next session.
 
-The contract isn't a judge, but it makes every trace visible: sealed questions, everyone's answer (including the host's) revealed at the same time, results and dispute counts recorded permanently, and the host's reputation (sessions run, questions resolved, questions voided by dispute) shown to participants before they put coins in.
+The contract isn't a judge, but it makes every trace visible: sealed questions, everyone's answer revealed at the same time, and results and dispute counts recorded permanently. The next step is designed but not built: a host's reputation (sessions run, questions resolved, questions voided by dispute) shown to participants before they join.
 
 ---
 
 ## Why Monad
 
-1. **Small-transaction economics.** One session of 10 people × 10 questions produces ~300 transactions (answer, reveal, claim) worth 1–20 coins each. At $0.05 per transaction that's $15 in fees, more than the prizes. This product only makes sense on a chain where fees round to zero.
-2. **Speed is part of the game.** The "first N correct" rule is only fair when blocks are fast and ordering is unambiguous. A 30-second timer with 15-second confirmations isn't playable.
-3. **Our first users are Monad's own community.** We're members of DevWeb3Jogja, an official Metropolis community supporter. Kokonad's first sessions run at its events.
+1. **Small-transaction economics.** The recorded game below was 23 transactions for 3 players and 2 questions, and cost 0.97 MON in all. By the same count, 10 people × 10 questions is about 300 transactions (seal, answer, reveal, pay-out) moving 1–20 coins each. At $0.05 per transaction that would be $15 in fees, more than the prizes. This product only makes sense on a chain where fees round to zero.
+2. **Speed is part of the game.** A room looks at one clock: the laptop, every phone and the big screen each poll the chain every two seconds and draw what they show from a single block. A 30-second question with 15-second confirmations isn't playable. The "first N correct" rule (in the contract, not in the app yet) also only makes sense when ordering is fast and unambiguous.
+3. **Our first users are Monad's own community.** The builder is a member of DevWeb3Jogja, an official Metropolis community supporter. The first sessions with people are meant for its events; none has run yet.
 
 **Numbers from one full game on the public site** (room `RN2U3C`, 12 Oct 2026; read from the relayer's ledger and the chain). The players were browsers driven by the end-to-end suite, not people: a session with people is still to come.
 
@@ -119,7 +135,21 @@ The sections above describe the product as designed. This is what runs today on 
 | Realtime | WebSocket (Node) | synced countdown and animation triggers | not built (polling) |
 | Auto-resolver | Chainlink CRE | resolves markets with a public data source | not built (stretch) |
 
-Full architecture and component boundaries: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Product spec: [`docs/PRD.md`](docs/PRD.md). Wireframes and mockups: [`docs/`](docs/).
+### How it fits together, as built
+
+```
+ host laptop · phones · big screen   (one Next.js app)
+        │ write: sign an ERC-2771 request in the browser        ▲ read: one Multicall3 call every 2 s,
+        ▼                                                       │       every view drawn from a single block
+ relayer (Node, viem): verify, dry-run, pay the gas             │
+        ▼                                                       │
+ Forwarder ──► RoomFactory ──► Room (one per session) + KokoToken        on Monad testnet (10143)
+```
+
+Nothing sits between the screens and the chain for reads, and no server decides a winner, an order or an amount.
+The relayer also holds the one LLM call (the question draft).
+
+The full design, including the parts not built (indexer, WebSocket, host registry): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Product spec: [`docs/PRD.md`](docs/PRD.md). Wireframes and mockups: [`docs/`](docs/).
 
 ---
 
@@ -150,17 +180,17 @@ docs/          PRD, architecture, design notes, mockups
 Rooms are deployed per session by `RoomFactory`; a room's address is `RoomFactory.roomByCode(<CODE>)`.
 Addresses live in [`deployments/10143.json`](deployments/10143.json) (deployed 18 Sep 2026 from block 63559698).
 
-### Contracts status (week 1)
+### Contracts
 
 `contracts/` holds `KokoToken`, `RoomFactory` and `Room` with the full question lifecycle: join and
 deposits (sponsored budget or pooled), sealed questions, one play charged per participant into the pot
 with Answer/Correct balances, commit-reveal, resolve, 60-second dispute window, settle (push ≤ 20
-winners, pull above), void with refunds, timeout, leave and close. 51 Foundry tests including
+winners, pull above), void with refunds, timeout, leave and close. 60 Foundry tests including
 `Room.e2e.t.sol`, which replays the PRD §5A worked example to the wei. See
 [`contracts/README.md`](contracts/README.md) for the function map and the few places the
 implementation deliberately differs from the PRD function table.
 
-### Backend status (week 1)
+### Backend
 
 `backend/` is a relayer. Monad keeps a 10 MON reserve per account, so a fresh player account
 cannot pay its own gas. Players and hosts sign requests, and the relayer submits them through an
@@ -189,7 +219,7 @@ cd web && pnpm install && cp .env.example .env.local && pnpm dev
 
 With the relayer and the web app running: open `/`, "Create room" to host at `/host`, and join from another
 browser via "Have a code? Join" (`/join`, then `/r/<CODE>`). Nobody needs MON: every action is signed in the
-browser and paid for by the relayer. Until Dynamic sign-in is configured, the account lives in the tab, so a
+browser and paid for by the relayer. With "Just play on this device" the account lives in the tab, so a
 reload starts a new one; a room can only be hosted from the tab that created it.
 
 Required environment variables are listed in each folder's `.env.example`: RPC URL, relayer key, Dynamic environment ID, LLM API key.
@@ -211,7 +241,7 @@ No wallet, no MON needed: the game token and gas are handled inside the app.
 
 ## Hackathon-version limitations
 
-- Testnet and mock token only. We demo sponsored rooms (participants never pay: a skill-based prize distribution). Pooled rooms work on testnet with worthless coins; with real money they'd be jurisdiction-gated.
+- Testnet and mock token only. We demo sponsored rooms (participants never pay: a skill-based prize distribution). Pooled rooms exist in the contracts only; with real money they'd be jurisdiction-gated.
 - The host sets results; there is no adjudicated dispute. See "What if the host cheats?".
 - Up to 50 participants per room.
 - "Fastest" means block order, not milliseconds.
@@ -230,6 +260,7 @@ No wallet, no MON needed: the game token and gas are handled inside the app.
 - Pre-hackathon code used as **reference** (not shipped as product): a parimutuel `PredictionPool` pattern, ERC-8004 registries, EIP-712 proofs, and a warm design system. Everything demoed was built within the 1 Sep – 13 Oct 2026 window and is visible in the commit history.
 - No real token, no wash trading, no fake volume. Any simulated wallets used for load testing are labeled "simulated".
 - The coconut mascot and all visual assets are original.
+- The demo video shows Monad's logo, taken from Monad's brand kit and used unchanged; it is Monad's trademark and not covered by this repo's licence.
 
 ## License
 
