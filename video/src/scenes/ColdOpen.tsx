@@ -9,6 +9,8 @@ export const COLD_OPEN_FRAMES = 90;
 const FROM_T = 82.3;
 const FLY = 8;
 const PAID = 34;
+/** The fade into the intro takes the last 12 frames. */
+const OUT = COLD_OPEN_FRAMES - 14;
 /** The 360x780 recording at 1.6x; the phone runs off the bottom of the frame, since only its top half moves. */
 const WIDTH = 576;
 const HEIGHT = 1248;
@@ -32,7 +34,16 @@ export const ColdOpen: React.FC = () => {
           style={{ position: "absolute", left: 0, top: 0, width: WIDTH, height: HEIGHT }}
         />
       </Phone>
-      <div style={{ position: "absolute", left: 850, top: 330, width: 960 }}>
+      <div
+        style={{
+          position: "absolute",
+          left: 850,
+          top: 330,
+          width: 960,
+          // Gone before the fade into the intro starts, so Koko's bubble never types over it.
+          opacity: interpolate(frame, [OUT - 10, OUT], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        }}
+      >
         <div
           style={{
             fontWeight: 900,
@@ -66,9 +77,7 @@ export const ColdOpen: React.FC = () => {
             }),
           }}
         >
-          Split by a contract on Monad.
-          <br />
-          Nobody had to claim a thing.
+          By a contract, on Monad.
         </div>
       </div>
     </Backdrop>
